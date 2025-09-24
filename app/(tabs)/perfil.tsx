@@ -36,23 +36,22 @@ const RankingSection = () => (
 
 
 export default function PerfilScreen() {
-  const [activeTab, setActiveTab] = useState('estadisticas');
+  const [activeTab, setActiveTab] = useState('ranking');
   const theme = useTheme();
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.elevation.level2 }]} edges={['top']}>
+    // Corregido: Usamos 'theme.colors.background' que ahora es tu color #e8d2ce
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
       <ScrollView>
         <ProfileHeader />
 
         <View style={styles.container}>
-          {/* Tarjetas de Estadísticas Rápidas */}
           <View style={styles.statsRow}>
             <StatCard icon="trophy-variant-outline" value={1250} label="Puntos" />
             <StatCard icon="target" value={23} label="Retos" />
             <StatCard icon="account-group-outline" value={45} label="Amigos" />
           </View>
 
-          {/* Sección Conectar Amigos */}
           <Card style={styles.sectionCard}>
             <Card.Title title="Conectar con Amigos" />
             <Card.Actions style={styles.friendActions}>
@@ -61,7 +60,6 @@ export default function PerfilScreen() {
             </Card.Actions>
           </Card>
 
-          {/* Tabs de Navegación */}
           <SegmentedButtons
             value={activeTab}
             onValueChange={setActiveTab}
@@ -73,12 +71,9 @@ export default function PerfilScreen() {
             style={styles.tabs}
           />
 
-          {/* Contenido condicional basado en la Tab */}
           {activeTab === 'estadisticas' && <StatisticsSection />}
           {activeTab === 'insignias' && <InsigniasSection />}
           {activeTab === 'ranking' && <RankingSection />}
-
-           {/* Aquí puedes agregar la sección de "Mis Fotos de Retos" */}
 
         </View>
       </ScrollView>

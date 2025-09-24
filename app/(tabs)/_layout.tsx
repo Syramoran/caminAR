@@ -1,53 +1,56 @@
+import React from 'react';
 import { Tabs } from 'expo-router';
+import { useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet } from 'react-native';
 
 export default function TabLayout() {
+  // 1. Obtenemos el tema que definimos en el layout principal
+  const theme = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#d1ddd9ff', // Color primario de tu paleta
-        tabBarStyle: styles.tabBar,
-        headerShown: false, // Oculta el encabezado por defecto
+        headerShown: false,
+        // 2. Usamos los colores del tema para los íconos
+        tabBarActiveTintColor: theme.colors.primary, // Color primario (tu verde oscuro)
+        tabBarInactiveTintColor: 'gray', // Un color neutral para los inactivos
+        // 3. Usamos el color del tema para el fondo de la barra
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface, // El color de fondo de las cards (blanco)
+          borderTopWidth: 0,
+          elevation: 4, // Le damos una pequeña sombra para que se distinga
+          shadowOpacity: 0.1,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ color }) => <Ionicons name="home-outline" color={color} size={28} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="retos"
         options={{
           title: 'Retos',
-          tabBarIcon: ({ color }) => <Ionicons name="trophy-outline" color={color} size={28} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="trophy-outline" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="perfil"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color }) => <Ionicons name="person-outline" color={color} size={28} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="premios"
         options={{
           title: 'Premios',
-          tabBarIcon: ({ color }) => <Ionicons name="gift-outline" color={color} size={28} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="gift-outline" color={color} size={size} />,
         }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: '#00ffb3ff', // Color de fondo de tu paleta
-    borderTopWidth: 0,
-    elevation: 0, // Para Android
-    shadowOpacity: 0, // Para iOS
-  },
-});
