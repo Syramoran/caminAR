@@ -38,6 +38,13 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "La aplicación necesita acceso a tus fotos para que puedas seleccionar una imagen de perfil.",
+          "cameraPermission": "La aplicación necesita acceso a tu cámara para que puedas tomar una nueva foto de perfil."
+        }
       ]
     ],
     "experiments": {

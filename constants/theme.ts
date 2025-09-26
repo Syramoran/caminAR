@@ -1,53 +1,30 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
+import { MD3LightTheme as DefaultTheme } from 'react-native-paper';
 
-import { Platform } from 'react-native';
+export const theme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+    // --- Roles de color principales ---
+    primary: '#2F855A',       // Tu verde oscuro para elementos interactivos principales.
+    onPrimary: '#FFFFFF',     // Texto sobre fondos primarios (ej. en el header de perfil).
+    
+    secondary: '#bed77c',     // Tu verde claro para acentos y elementos secundarios.
+    onSecondary: '#404244',   // Texto sobre fondos secundarios (como en el Chip "Tú").
+    
+    tertiary: '#dd6f3f',      // Tu color naranja para otros acentos.
 
-export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    // --- Roles de fondo y superficie ---
+    background: '#fff',    // El color de fondo GENERAL de tus pantallas.
+    onBackground: '#404244',  // El color del texto que va sobre el fondo general.
+
+    surface: '#FFFFFF',       // El color de fondo de los componentes "elevados" como Cards, Menús, etc.
+    onSurface: '#404244',     // El color de texto principal que va sobre las Cards.
+    onSurfaceVariant: '#555555', // Un color de texto más suave para subtítulos.
+
+    // --- Otros roles ---
+    outline: '#CCCCCC',       // Color para bordes o divisores.
+
+    text: '#404244',          // Color de texto principal.
   },
 };
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
