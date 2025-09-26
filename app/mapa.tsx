@@ -1,20 +1,12 @@
-import { View, Text, Button } from 'react-native';
 
-export default function MapaScreen() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>Hola soy un mapa</Text>
-    </View>
-  );
-}
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
 import { Alert, Image, Modal, Text, TouchableOpacity, View } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
-import { colors, theme } from "../constants/theme";
+import { theme } from "../constants/theme";
 import { MOCK_POINTS } from "../models/mocks";
-import { useChallenges } from "./hooks/useChallenges";
+import { useChallenges } from "../hooks/useChallenges";
 
 export default function MapaScreen() {
   const [region, setRegion] = useState<Region | null>(null);
@@ -68,8 +60,8 @@ export default function MapaScreen() {
 
   if (!region) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.background, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: theme.text }}>Cargando mapa…</Text>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: theme.colors.text }}>Cargando mapa…</Text>
       </View>
     );
   }
@@ -94,11 +86,11 @@ export default function MapaScreen() {
           backgroundColor: "#fff", borderRadius: 16, padding: 16,
           shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10, elevation: 3
         }}>
-          <Text style={{ fontWeight: "800", color: theme.text, marginBottom: 6 }}>¿Estás en el punto?</Text>
-          <Text style={{ color: theme.text, marginBottom: 10 }}>
+          <Text style={{ fontWeight: "800", color: theme.colors.text, marginBottom: 6 }}>¿Estás en el punto?</Text>
+          <Text style={{ color: theme.colors.text, marginBottom: 10 }}>
             Subí una foto como evidencia para sumar progreso.
           </Text>
-          <TouchableOpacity onPress={openCamera} style={{ backgroundColor: theme.primary, padding: 12, borderRadius: 12, alignItems: "center" }}>
+          <TouchableOpacity onPress={openCamera} style={{ backgroundColor: theme.colors.primary, padding: 12, borderRadius: 12, alignItems: "center" }}>
             <Text style={{ color: "#fff", fontWeight: "700" }}>Abrir cámara</Text>
           </TouchableOpacity>
         </View>
@@ -107,14 +99,14 @@ export default function MapaScreen() {
       <Modal visible={!!photo} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: "#00000088", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, width: "90%" }}>
-            <Text style={{ color: theme.text, fontWeight: "800", marginBottom: 8 }}>Confirmar evidencia</Text>
+            <Text style={{ color: theme.colors.text, fontWeight: "800", marginBottom: 8 }}>Confirmar evidencia</Text>
             {photo ? <Image source={{ uri: photo }} style={{ width: "100%", height: 380, borderRadius: 12 }} /> : null}
             <View style={{ marginTop: 12, flexDirection: "row", gap: 12, justifyContent: "space-between" }}>
-              <TouchableOpacity onPress={confirmEvidence} style={{ backgroundColor: theme.primary, padding: 12, borderRadius: 12, flex: 1, alignItems: "center" }}>
+              <TouchableOpacity onPress={confirmEvidence} style={{ backgroundColor: theme.colors.primary, padding: 12, borderRadius: 12, flex: 1, alignItems: "center" }}>
                 <Text style={{ color: "#fff", fontWeight: "700" }}>Confirmar</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setPhoto(null)} style={{ padding: 12, borderRadius: 12, flex: 1, alignItems: "center", borderWidth: 1, borderColor: theme.accent }}>
-                <Text style={{ color: theme.accent, fontWeight: "800" }}>Cancelar</Text>
+              <TouchableOpacity onPress={() => setPhoto(null)} style={{ padding: 12, borderRadius: 12, flex: 1, alignItems: "center", borderWidth: 1, borderColor: theme.colors.tertiary }}>
+                <Text style={{ color: theme.colors.tertiary, fontWeight: "800" }}>Cancelar</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -7,7 +7,7 @@ export default function RetosScreen() {
   const { challenges } = useChallenges();
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.background, padding: 16 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: theme.colors.background, padding: 16 }}>
       <ChallengeSections data={challenges} />
     </ScrollView>
   );

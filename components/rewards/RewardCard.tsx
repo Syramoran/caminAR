@@ -14,6 +14,6 @@ export default function RewardCard({ r }: { r: Reward }) {
 
 const styles = StyleSheet.create({
   card: { backgroundColor: "#fff", padding: 16, marginBottom: 12, borderRadius: 12 },
-  title: { fontWeight: "700", fontSize: 18, color: theme.text },
-  points: { color: theme.accent, marginTop: 6, fontWeight: "700" },
+  title: { fontWeight: "700", fontSize: 18, color: theme.colors.text },
+  points: { color: theme.colors.tertiary, marginTop: 6, fontWeight: "700" },
 });

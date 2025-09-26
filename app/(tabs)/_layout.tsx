@@ -12,11 +12,11 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         // 2. Usamos los colores del tema para los íconos
-        tabBarActiveTintColor: theme.primary, // Color primario (tu verde oscuro)
+        tabBarActiveTintColor: theme.colors.primary, // Color primario (tu verde oscuro)
         tabBarInactiveTintColor: 'gray', // Un color neutral para los inactivos
         // 3. Usamos el color del tema para el fondo de la barra
         tabBarStyle: {
-          backgroundColor: theme.surface, // El color de fondo de las cards (blanco)
+          backgroundColor: theme.colors.surface, // El color de fondo de las cards (blanco)
           borderTopWidth: 0,
           elevation: 4, // Le damos una pequeña sombra para que se distinga
           shadowOpacity: 0.1,

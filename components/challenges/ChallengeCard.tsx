@@ -9,11 +9,18 @@ export default function ChallengeCard({ c }: { c: Challenge }) {
   const shot = useRef<ViewShot>(null);
 
   const shareImage = async () => {
-    const uri = await shot.current?.capture?.({ format: "png", quality: 1 });
+    const uri = await shot.current?.capture?.();
     if (uri && await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri);
     }
   };
+
+  // const shareImage = async () => {
+  //   const uri = await shot.current?.capture?.({ format: "png", quality: 1 });
+  //   if (uri && await Sharing.isAvailableAsync()) {
+  //     await Sharing.shareAsync(uri);
+  //   }
+  // };
 
   const pct = c.progress ? Math.round((c.progress.current / c.progress.total) * 100) : c.status === "completed" ? 100 : 0;
 
@@ -38,9 +45,9 @@ export default function ChallengeCard({ c }: { c: Challenge }) {
 
 const styles = StyleSheet.create({
   card: { backgroundColor: "#fff", padding: 16, marginBottom: 12, borderRadius: 12 },
-  title: { fontWeight: "700", fontSize: 18, color: theme.text },
-  desc: { color: theme.text, marginTop: 4 },
+  title: { fontWeight: "700", fontSize: 18, color: theme.colors.text },
+  desc: { color: theme.colors.text, marginTop: 4 },
   barBg: { height: 8, backgroundColor: "#ddd", borderRadius: 4, marginTop: 8 },
-  barFill: { height: 8, backgroundColor: theme.primary, borderRadius: 4 },
-  share: { marginTop: 8, color: theme.accent, fontWeight: "700" },
+  barFill: { height: 8, backgroundColor: theme.colors.tertiary, borderRadius: 4 },
+  share: { marginTop: 8, color: theme.colors.tertiary, fontWeight: "700" },
 });

@@ -24,5 +24,7 @@ export const theme = {
 
     // --- Otros roles ---
     outline: '#CCCCCC',       // Color para bordes o divisores.
+
+    text: '#404244',          // Color de texto principal.
   },
 };
