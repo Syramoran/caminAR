@@ -15,7 +15,7 @@ const { width } = Dimensions.get('window');
 export default function TutorialStep3() {
   const handleNext = () => {
     // Navega a la siguiente pantalla de la app y reemplaza la historia de navegación
-    router.replace('/login');
+    router.replace('/(tabs)');
   };
 
   return (
