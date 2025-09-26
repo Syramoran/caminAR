@@ -32,7 +32,7 @@ export default function WelcomeScreen() {
           </Text>
 
           {/* Botón para navegar a la pantalla de Login */}
-          <Link href="/tutorial/tutorial1" asChild>
+          <Link href="/login" asChild>
             <TouchableOpacity style={styles.button}>
               <Text style={styles.buttonText}>
                 Comenzá tu viaje ecológico

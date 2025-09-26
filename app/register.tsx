@@ -48,7 +48,7 @@ export default function RegisterScreen() {
     // Si la validación pasa, aquí puedes enviar los datos al servidor
     console.log('Datos del formulario de registro:', data);
     Alert.alert('Registro Exitoso', '¡Tu cuenta ha sido creada! Ahora puedes iniciar sesión.');
-    router.replace('/login');
+    router.replace('/tutorial/tutorial1');
   };
 
   return (

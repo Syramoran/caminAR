@@ -6,7 +6,7 @@ export const theme = {
     ...DefaultTheme.colors,
 
     // --- Roles de color principales ---
-    primary: '#06543a',       // Tu verde oscuro para elementos interactivos principales.
+    primary: '#2F855A',       // Tu verde oscuro para elementos interactivos principales.
     onPrimary: '#FFFFFF',     // Texto sobre fondos primarios (ej. en el header de perfil).
     
     secondary: '#bed77c',     // Tu verde claro para acentos y elementos secundarios.
@@ -15,7 +15,7 @@ export const theme = {
     tertiary: '#dd6f3f',      // Tu color naranja para otros acentos.
 
     // --- Roles de fondo y superficie ---
-    background: '#e8d2ce',    // El color de fondo GENERAL de tus pantallas.
+    background: '#fff',    // El color de fondo GENERAL de tus pantallas.
     onBackground: '#404244',  // El color del texto que va sobre el fondo general.
 
     surface: '#FFFFFF',       // El color de fondo de los componentes "elevados" como Cards, Menús, etc.

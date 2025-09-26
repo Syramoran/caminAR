@@ -24,7 +24,7 @@ export default function LoginScreen() {
   const onSubmit: SubmitHandler<LoginFormInputs> = (data) => {
     console.log('Datos del formulario:', data);
     Alert.alert('Formulario Enviado', 'Revisa la consola para ver los datos del formulario.');
-    router.replace('/tutorial/tutorial1');
+    router.replace('/(tabs)');
   };
 
   return (
