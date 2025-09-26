@@ -1,9 +1,14 @@
-import { View, Text, Button } from 'react-native';
+import { ScrollView } from "react-native";
+import ChallengeSections from "../../components/challenges/ChallengeSections";
+import { theme } from "../../constants/theme";
+import { useChallenges } from "../../hooks/useChallenges";
 
 export default function RetosScreen() {
+  const { challenges } = useChallenges();
+
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>Hola soy retos</Text>
-    </View>
+    <ScrollView style={{ flex: 1, backgroundColor: theme.background, padding: 16 }}>
+      <ChallengeSections data={challenges} />
+    </ScrollView>
   );
 }
