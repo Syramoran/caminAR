@@ -41,7 +41,7 @@ export default function ChallengeSections({ data }: { data: Challenge[] }) {
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 24, // Aumentamos el espacio entre secciones
+    marginBottom: 32, // Aumentamos el espacio entre secciones para mayor claridad
   },
   sectionTitle: {
     fontWeight: 'bold',
