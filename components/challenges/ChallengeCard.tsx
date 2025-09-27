@@ -10,7 +10,6 @@ export default function ChallengeCard({ c }: { c: Challenge }) {
   const shot = useRef<ViewShot>(null);
   const theme = useTheme();
 
-  // La funcionalidad de compartir se mantiene intacta
   const shareImage = async () => {
     try {
       const uri = await shot.current?.capture?.();
@@ -24,7 +23,6 @@ export default function ChallengeCard({ c }: { c: Challenge }) {
 
   const pct = c.progress ? Math.round((c.progress.current / c.progress.total) * 100) : 0;
 
-  // Renderizado condicional para diferentes botones según el estado
   const renderActions = () => {
     switch (c.status) {
       case 'in_progress':
@@ -32,7 +30,6 @@ export default function ChallengeCard({ c }: { c: Challenge }) {
       case 'available':
         return <Button mode="outlined" onPress={() => {}} style={styles.actionButton}>Iniciar Desafío</Button>;
       case 'completed':
-        // La tarjeta completa es la que se puede compartir
         return <Button mode="contained" icon="share-variant" onPress={shareImage} style={styles.actionButton}>Compartir Logro</Button>;
       default:
         return null;
@@ -40,31 +37,28 @@ export default function ChallengeCard({ c }: { c: Challenge }) {
   };
 
   return (
-    // ViewShot envuelve la tarjeta para poder capturarla
     <ViewShot ref={shot} options={{ format: 'png', quality: 0.9 }}>
       <Card style={styles.card} mode="elevated">
         <Card.Content>
-          {/* Cabecera con título, puntos y chip "Activo" */}
+          {/* Cabecera reorganizada para evitar solapamientos */}
           <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <Text variant="titleLarge" style={styles.title}>{c.title}</Text>
-            </View>
+            <Text variant="titleLarge" style={styles.title}>{c.title}</Text>
             <View style={styles.headerRight}>
               {c.points && <Text variant="titleLarge" style={[styles.points, { color: theme.colors.primary }]}>+{c.points} pts</Text>}
-              {c.status === 'in_progress' && <Chip style={styles.activeChip} textStyle={styles.activeChipText}>Activo</Chip>}
             </View>
           </View>
 
+          {/* El chip "Activo" ahora está fuera de la cabecera para no interferir */}
+          {c.status === 'in_progress' && <Chip style={styles.activeChip} textStyle={styles.activeChipText}>Activo</Chip>}
+
           <Text variant="bodyMedium" style={styles.description}>{c.description}</Text>
 
-          {/* Tags de categoría y dificultad */}
           {c.tags && (
             <View style={styles.tagsContainer}>
               {c.tags.map(tag => <Chip key={tag} style={styles.chip} textStyle={styles.chipText}>{tag}</Chip>)}
             </View>
           )}
 
-          {/* Información específica para desafíos en progreso */}
           {c.status === 'in_progress' && c.progress && (
             <View style={styles.progressContainer}>
               <View style={styles.progressInfo}>
@@ -94,27 +88,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
   },
   headerRight: {
     alignItems: 'flex-end',
   },
   title: {
     fontWeight: 'bold',
+    flex: 1, // Permite que el título ocupe el espacio disponible
     marginRight: 8,
   },
   points: {
     fontWeight: 'bold',
-    marginBottom: 4, // Espacio para el chip "Activo" debajo
+  },
+  activeChip: {
+    alignSelf: 'flex-start', // Se alinea a la izquierda
+    backgroundColor: '#FFD700',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  activeChipText: {
+    color: 'black',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   description: {
     color: '#666',
-    lineHeight: 20, // Mejora la legibilidad
+    lineHeight: 21,
+    marginTop: 8,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 12,
+    marginTop: 16,
   },
   chip: {
     marginRight: 8,
@@ -150,21 +155,10 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginTop: 8,
   },
-  activeChip: {
-    backgroundColor: '#FFD700', // Un color dorado para destacar
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activeChipText: {
-    color: 'black',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
   actionButton: {
-    marginTop: 20, // Más espacio sobre el botón
-    paddingVertical: 6, // Botones más grandes
-    borderRadius: 50, // Bordes completamente redondeados
+    marginTop: 20,
+    paddingVertical: 6,
+    borderRadius: 50,
   },
 });
 
