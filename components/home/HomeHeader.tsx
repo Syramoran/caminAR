@@ -2,26 +2,23 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useUser } from '../../context/UserContext'; // 1. Importamos el hook del contexto
 
-// Definimos qué datos necesita este componente para funcionar
-interface HomeHeaderProps {
-  userName: string;
-  points: number;
-  level: number;
-  weather: {
-    temp: string;
-    condition: string;
-  };
-}
-
-// CAMBIO: Cambiamos "export default function" a "export const"
-export const HomeHeader = ({ userName, points, level, weather }: HomeHeaderProps) => {
+// Eliminamos la necesidad de pasar props, el componente ahora es autosuficiente
+export const HomeHeader = () => {
   const theme = useTheme();
+  const { userName } = useUser(); // 2. Obtenemos el nombre del usuario del contexto
+
+  // Datos de ejemplo que podrían venir del contexto en el futuro
+  const points = 1250;
+  const level = 5;
+  const weather = { temp: '21', condition: 'Soleado' };
 
   return (
     <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
       <View style={styles.row}>
         <View>
+          {/* 3. Mostramos el nombre del contexto */}
           <Text variant="headlineMedium" style={styles.headerTitle}>Hola, {userName}</Text>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
@@ -42,8 +39,9 @@ export const HomeHeader = ({ userName, points, level, weather }: HomeHeaderProps
       </View>
     </View>
   );
-}; // CAMBIO: Se cierra el componente aquí
+};
 
+// ... (los estilos se mantienen igual)
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
