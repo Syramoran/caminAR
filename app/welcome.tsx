@@ -3,25 +3,33 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  Image,
   ImageBackground,
+  StatusBar,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// Se elimina la importación de LinearGradient
+import { useTheme } from 'react-native-paper';
 
 export default function WelcomeScreen() {
+  const theme = useTheme();
+
   return (
     <ImageBackground
-      source={require('../assets/images/fondo.jpg')} // Reemplaza con la ruta de tu imagen
+      source={require('../assets/images/fondo.jpg')}
       resizeMode="cover"
       style={styles.imageBackground}
     >
+      <StatusBar barStyle="light-content" />
       <View style={styles.overlay} />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
-          <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}></View>
-          </View>
+          {/* Se eliminó el View que creaba el círculo verde */}
+          <Image
+            source={require('../assets/images/icon.png')}
+            style={styles.logoImage} // Este estilo ahora controla el tamaño y posición del logo
+            resizeMode="contain"
+          />
 
           <Text style={styles.title}>
             CaminAR
@@ -31,10 +39,9 @@ export default function WelcomeScreen() {
             Descubrí, desafiá y marcá la diferencia.
           </Text>
 
-          {/* Botón para navegar a la pantalla de Login */}
           <Link href="/login" asChild>
             <TouchableOpacity style={styles.button}>
-              <Text style={styles.buttonText}>
+              <Text style={[styles.buttonText, { color: theme.colors.primary }]}>
                 Comenzá tu viaje ecológico
               </Text>
             </TouchableOpacity>
@@ -52,68 +59,51 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   imageBackground: {
     flex: 1,
-    width: '100%',
-    height: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)', // Negro con 50% de opacidad
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   safeArea: {
     flex: 1,
-    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1, // Asegura que el contenido esté por encima del overlay
   },
   content: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
     width: '100%',
-    maxWidth: 400,
   },
-  logoContainer: {
-    width: 64,
-    height: 64,
-    backgroundColor: '#2F855A',
-    borderRadius: 9999,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logoCircle: {
-    width: 40,
-    height: 40,
-    backgroundColor: 'transparent',
-    borderRadius: 9999,
+  // Se eliminó el estilo 'logoContainer' que creaba el círculo
+  logoImage: {
+    width: 120, // Un tamaño adecuado para el logo solo
+    height: 120,
+    marginBottom: 24, // Mantenemos el espacio inferior
   },
   title: {
-    fontSize: 48,
+    fontSize: 56,
     fontWeight: '700',
     color: 'white',
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
     marginBottom: 10,
   },
   subtitle: {
     color: 'white',
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 60,
     paddingHorizontal: 20,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    lineHeight: 24,
   },
   button: {
     backgroundColor: 'white',
     paddingVertical: 16,
     paddingHorizontal: 32,
-    borderRadius: 9999,
+    borderRadius: 50,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -121,7 +111,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   buttonText: {
-    color: '#2F855A',
     fontWeight: '700',
     fontSize: 16,
   },
@@ -129,9 +118,8 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 12,
     textAlign: 'center',
-    marginTop: 80,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    position: 'absolute',
+    bottom: -60,
   },
 });
+
