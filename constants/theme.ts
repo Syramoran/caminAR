@@ -5,26 +5,26 @@ export const theme = {
   colors: {
     ...DefaultTheme.colors,
 
-    // --- Roles de color principales ---
-    primary: '#2F855A',       // Tu verde oscuro para elementos interactivos principales.
-    onPrimary: '#FFFFFF',     // Texto sobre fondos primarios (ej. en el header de perfil).
-    
-    secondary: '#bed77c',     // Tu verde claro para acentos y elementos secundarios.
-    onSecondary: '#404244',   // Texto sobre fondos secundarios (como en el Chip "Tú").
-    
-    tertiary: '#dd6f3f',      // Tu color naranja para otros acentos.
+    // --- Roles principales ---
+    primary: '#2E7D5E',        // Verde bosque natural, elegante y cálido.
+    onPrimary: '#FFFFFF',      // Texto claro sobre el color principal.
 
-    // --- Roles de fondo y superficie ---
-    background: '#fff',    // El color de fondo GENERAL de tus pantallas.
-    onBackground: '#404244',  // El color del texto que va sobre el fondo general.
+    secondary: '#A4D65E',      // Verde lima suave, fresco, da contraste y vida.
+    onSecondary: '#2F3A2E',    // Texto oscuro sobre el secundario.
 
-    surface: '#FFFFFF',       // El color de fondo de los componentes "elevados" como Cards, Menús, etc.
-    onSurface: '#404244',     // El color de texto principal que va sobre las Cards.
-    onSurfaceVariant: '#555555', // Un color de texto más suave para subtítulos.
+    tertiary: '#E86A33',       // Naranja tierra, complementa bien a los verdes.
+    onTertiary: '#FFFFFF',     // Texto claro sobre naranja.
+
+    // --- Fondos y superficies ---
+    background: '#F5F7F2',     // Fondo claro con tinte verdoso, muy natural y suave.
+    onBackground: '#2F3A2E',   // Texto principal (verde muy oscuro grisáceo).
+
+    surface: '#FFFFFF',        // Fondo de cards, menús, modales.
+    onSurface: '#36423A',      // Texto principal sobre superficie.
+    onSurfaceVariant: '#66735E', // Texto secundario, tono más apagado.
 
     // --- Otros roles ---
-    outline: '#CCCCCC',       // Color para bordes o divisores.
-
-    text: '#404244',          // Color de texto principal.
+    outline: '#D5E2C6',        // Borde suave, verde grisáceo claro.
+    text: '#2F3A2E',           // Texto general.
   },
 };
