@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
 import { Link, useRouter } from 'expo-router'; 
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 
@@ -31,9 +31,11 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <View style={styles.card}>
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}></View>
-          </View>
+          <Image
+            source={require('../assets/images/icon.png')}
+            style={styles.logoImage} // Este estilo ahora controla el tamaño y posición del logo
+            resizeMode="contain"
+          />
           <Text style={styles.welcomeTitle}>Bienvenido a CaminAR</Text>
           <Text style={styles.welcomeText}>Unite a la comunidad de eco-aventureros</Text>
         </View>
@@ -222,10 +224,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
+  logoImage: {
+     width: 120, // Un tamaño adecuado para el logo solo
+     height: 120,
+     marginBottom: 24, // Mantenemos el espacio inferior
+  },
   missionText: {
     color: '#A0AEC0',
     textAlign: 'center',
     fontSize: 12,
     marginTop: 24,
   },
+
 });
