@@ -2,55 +2,35 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useUser } from '../../context/UserContext';
 
-// Definimos qué datos necesita este componente para funcionar
-interface HomeHeaderProps {
-  userName: string;
-  points: number;
-  level: number;
-  weather: {
-    temp: string;
-    condition: string;
-  };
-}
-
-// CAMBIO: Cambiamos "export default function" a "export const"
-export const HomeHeader = ({ userName, points, level, weather }: HomeHeaderProps) => {
+export const HomeHeader = () => {
   const theme = useTheme();
+  const { userName } = useUser();
+  const points = 1247;
+  const level = 5;
 
   return (
     <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
       <View style={styles.row}>
         <View>
           <Text variant="headlineMedium" style={styles.headerTitle}>Hola, {userName}</Text>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Icon name="trophy-variant-outline" size={16} color="white" />
-              <Text style={styles.statText}>{points} puntos</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Icon name="star-outline" size={16} color="white" />
-              <Text style={styles.statText}>Nivel {level}</Text>
-            </View>
-          </View>
+          <Text style={styles.headerSubtitle}>¿Listo para la eco-aventura de hoy?</Text>
         </View>
-        <View style={styles.weatherContainer}>
-          <Icon name="white-balance-sunny" size={24} color="white" />
-          <Text style={styles.weatherTemp}>{weather.temp}°C</Text>
-          <Text style={styles.weatherCondition}>{weather.condition}</Text>
+        <View style={styles.pointsContainer}>
+          <Text style={styles.pointsValue}>{points}</Text>
+          <Text style={styles.pointsLabel}>Puntos Eco</Text>
         </View>
       </View>
     </View>
   );
-}; // CAMBIO: Se cierra el componente aquí
+};
 
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingTop: 60, // Espacio para la barra de estado
+    paddingBottom: 24, // Reducimos el padding inferior
   },
   row: {
     flexDirection: 'row',
@@ -61,31 +41,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
   },
-  statsRow: {
-    flexDirection: 'row',
-    marginTop: 8,
-    gap: 16,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statText: {
+  headerSubtitle: {
     color: 'white',
-    marginLeft: 4,
+    opacity: 0.9,
+    marginTop: 4,
   },
-  weatherContainer: {
-    alignItems: 'center',
+  pointsContainer: {
+    alignItems: 'flex-end',
   },
-  weatherTemp: {
+  pointsValue: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 18,
+    fontSize: 24,
   },
-  weatherCondition: {
+  pointsLabel: {
     color: 'white',
-    fontSize: 12,
     opacity: 0.9,
+    fontSize: 12,
   },
 });
 
