@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
-import { Link, useRouter } from 'expo-router'; 
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import { Link, useRouter } from 'expo-router';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type LoginFormInputs = {
   email: string;
@@ -28,92 +29,99 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <View style={styles.header}>
-          <Image
-            source={require('../assets/images/icon.png')}
-            style={styles.logoImage} // Este estilo ahora controla el tamaño y posición del logo
-            resizeMode="contain"
-          />
-          <Text style={styles.welcomeTitle}>Bienvenido a CaminAR</Text>
-          <Text style={styles.welcomeText}>Unite a la comunidad de eco-aventureros</Text>
-        </View>
-
-        <View style={styles.loginSection}>
-          <Text style={styles.loginTitle}>Comenzar</Text>
-          <Text style={styles.loginSubtitle}>Creá tu cuenta o inicia sesión para continuar</Text>
-        </View>
-
-        <View style={styles.formContainer}>
-          <Controller
-            control={control}
-            rules={{
-              required: 'El correo electrónico es requerido.',
-              pattern: {
-                value: /^\S+@\S+$/i,
-                message: 'Formato de correo electrónico inválido.',
-              },
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                style={styles.input}
-                placeholder="Correo electrónico"
-                placeholderTextColor="#A0AEC0"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                keyboardType="email-address"
-                autoCapitalize="none"
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
+      >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.container}>
+          <View style={styles.card}>
+            <View style={styles.header}>
+              <Image
+                source={require('../assets/images/icon.png')}
+                style={styles.logoImage} 
+                resizeMode="contain"
               />
-            )}
-            name="email"
-          />
-          {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
+              <Text style={styles.welcomeTitle}>¡Bienvenido!</Text>
+              <Text style={styles.welcomeText}>Unite a la comunidad de eco-aventureros</Text>
+            </View>
 
-          <Controller
-            control={control}
-            rules={{
-              required: 'La contraseña es requerida.',
-              minLength: {
-                value: 6,
-                message: 'La contraseña debe tener al menos 6 caracteres.',
-              },
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                style={styles.input}
-                placeholder="Contraseña"
-                placeholderTextColor="#A0AEC0"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                secureTextEntry
+            <View style={styles.formContainer}>
+              <Controller
+                control={control}
+                rules={{
+                  required: 'El correo electrónico es requerido.',
+                  pattern: {
+                    value: /^\S+@\S+$/i,
+                    message: 'Formato de correo electrónico inválido.',
+                  },
+                }}
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Correo electrónico"
+                    placeholderTextColor="#A0AEC0"
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    value={value}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                )}
+                name="email"
               />
-            )}
-            name="password"
-          />
-          {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
+              {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleSubmit(onSubmit)}>
-            <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-          </TouchableOpacity>
+              <Controller
+                control={control}
+                rules={{
+                  required: 'La contraseña es requerida.',
+                  minLength: {
+                    value: 6,
+                    message: 'La contraseña debe tener al menos 6 caracteres.',
+                  },
+                }}
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Contraseña"
+                    placeholderTextColor="#A0AEC0"
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    value={value}
+                    secureTextEntry
+                  />
+                )}
+                name="password"
+              />
+              {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
+
+              <TouchableOpacity style={styles.loginButton} onPress={handleSubmit(onSubmit)}>
+                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Link href="/register" asChild>
+              <TouchableOpacity style={styles.registerButton}>
+                <Text style={styles.registerButtonText}>Registrarse</Text>
+              </TouchableOpacity>
+            </Link>
+            <Text style={styles.missionText}>
+              Al continuar, aceptas nuestra misión eco-amigable
+            </Text>
+          </View>
         </View>
+      </ScrollView>
+ </KeyboardAvoidingView>
 
-        <Link href="/register" asChild>
-          <TouchableOpacity style={styles.registerButton}>
-            <Text style={styles.registerButtonText}>Registrarse</Text>
-          </TouchableOpacity>
-        </Link>
-        <Text style={styles.missionText}>
-          Al continuar, aceptas nuestra misión eco-amigable
-        </Text>
-      </View>
-    </View>
   );
 }
 
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -225,9 +233,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   logoImage: {
-     width: 120, // Un tamaño adecuado para el logo solo
-     height: 120,
-     marginBottom: 24, // Mantenemos el espacio inferior
+    width: 120, 
+    height: 120,
+    marginBottom: 24, 
   },
   missionText: {
     color: '#A0AEC0',

@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
@@ -41,11 +42,8 @@ export default function RegisterScreen() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [passwordConfirmVisible, setPasswordConfirmVisible] = useState(false);
 
-  // const password = watch('password');
 
   const onSubmit: SubmitHandler<RegisterFormInputs> = (data) => {
-    // La validación se realiza de forma automática con react-hook-form
-    // Si la validación pasa, aquí puedes enviar los datos al servidor
     console.log('Datos del formulario de registro:', data);
     Alert.alert('Registro Exitoso', '¡Tu cuenta ha sido creada! Ahora puedes iniciar sesión.');
     router.replace('/tutorial/tutorial1');
@@ -55,16 +53,16 @@ export default function RegisterScreen() {
     <SafeAreaView style={styles.safeAreaContainer}>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContentContainer}>
           <View style={styles.card}>
             <View style={styles.header}>
-              <View style={styles.logoContainer}>
-                <View style={styles.logoCircle}></View>
-              </View>
-              <Text style={styles.welcomeTitle}>Bienvenido a CaminAR</Text>
-              <Text style={styles.welcomeText}>Únete a la comunidad de eco-aventureros</Text>
+              <Image
+                source={require('../assets/images/icon.png')}
+                style={styles.logoImage} 
+                resizeMode="contain"
+              />
             </View>
 
             <View style={styles.loginSection}>
@@ -194,13 +192,11 @@ validate: (value) => value.trim() === getValues('password').trim() || 'Las contr
               </View>
               {errors.passwordConfirm && <Text style={styles.errorText}>{errors.passwordConfirm.message}</Text>}
 
-              {/* Botón de Registro */}
               <TouchableOpacity style={styles.loginButton} onPress={handleSubmit(onSubmit)}>
                 <Text style={styles.loginButtonText}>Registrarse</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Enlace para volver al Login */}
             <Link href="/login" asChild>
               <TouchableOpacity style={styles.registerButton}>
                 <Text style={styles.registerButtonText}>¿Ya tienes una cuenta? Inicia sesión</Text>
@@ -212,7 +208,7 @@ validate: (value) => value.trim() === getValues('password').trim() || 'Las contr
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
   );
 }
 
@@ -244,22 +240,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  logoContainer: {
-    width: 64,
-    height: 64,
-    backgroundColor: '#2F855A',
-    borderRadius: 9999,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logoCircle: {
-    width: 40,
-    height: 40,
-    backgroundColor: 'white',
-    borderRadius: 9999,
+    marginBottom: 0,
   },
   welcomeTitle: {
     fontSize: 24,
@@ -274,7 +255,7 @@ const styles = StyleSheet.create({
   },
   loginSection: {
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 0,
   },
   loginTitle: {
     fontSize: 20,
@@ -356,4 +337,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 24,
   },
+  logoImage: {
+    width: 120, 
+    height: 120,
+    marginBottom: 0, 
+  }
 });
