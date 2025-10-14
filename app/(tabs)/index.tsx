@@ -51,7 +51,7 @@ export default function IndexScreen() {
   return (
     // 2. El color de fondo del área segura (la parte superior, detrás de la barra de estado)
     //    proviene del color primario de tu tema.
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.primary } } edges={['top']}>
       <StatusBar barStyle="light-content" />
 
       {/* HomeHeader es un componente hijo, pero también usa useTheme() internamente

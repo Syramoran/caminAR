@@ -11,7 +11,7 @@ export default function RetosScreen() {
 
   return (
     // SafeAreaView gestiona el espacio superior (notch/isla dinámica)
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.primary }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.primary }]} edges={['top']}>
       {/* Controlamos el color de los iconos de la barra de estado */}
       <StatusBar barStyle="light-content" />
 

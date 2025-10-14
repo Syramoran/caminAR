@@ -14,7 +14,7 @@ export default function PremiosScreen() {
   const userPoints = 1250;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.primary }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.primary }]} edges={['top']} >
       <StatusBar barStyle="light-content" />
 
       {/* Encabezado con puntos del usuario */}
