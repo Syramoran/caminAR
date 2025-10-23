@@ -1,49 +1,77 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Card, Text, Chip } from 'react-native-paper';
+import { Card, Text, Chip, ActivityIndicator, useTheme } from 'react-native-paper'; // Import ActivityIndicator y useTheme
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useUser, Reto } from '../../context/UserContext'; // Importa useUser y la interfaz Reto
 
-// Datos de ejemplo para las rutas
-const routes = [
-    { id: '1', name: 'Circuito del Parque Central', distance: '0.3 km', difficulty: 'Fácil', points: 50, icon: 'walk' },
-    { id: '2', name: 'Sendero Ribereño', distance: '1.2 km', difficulty: 'Medio', points: 120, icon: 'bike' },
-    { id: '3', name: 'Sendero del Bosque', distance: '2.1 km', difficulty: 'Difícil', points: 200, icon: 'hiking' },
-];
+// Componente para mostrar un item de reto (anteriormente RouteItem)
+// Ahora recibe un objeto 'Reto'
+const ChallengeItem = ({ challenge }: { challenge: Reto }) => {
+  const theme = useTheme();
 
-const RouteItem = ({ route }: any) => (
+  // Determinar un icono basado en el título o tipo (ejemplo simple)
+  let iconName = 'walk'; // Icono por defecto
+  if (challenge.titulo.toLowerCase().includes('bici')) iconName = 'bike';
+  if (challenge.titulo.toLowerCase().includes('foto')) iconName = 'camera';
+  if (challenge.titulo.toLowerCase().includes('recicl')) iconName = 'recycle';
+
+  return (
     <View style={styles.routeItem}>
         <View style={styles.routeIconContainer}>
-            <Icon name={route.icon} size={24} color="#333" />
+            {/* Usa el icono determinado */}
+            <Icon name={iconName} size={24} color="#333" />
         </View>
         <View style={styles.routeInfo}>
-            <Text style={styles.routeName}>{route.name}</Text>
-            <Text style={styles.routeDetails}>{route.distance} • {route.difficulty}</Text>
+            {/* Usa el título del reto */}
+            <Text style={styles.routeName}>{challenge.titulo}</Text>
+            {/* Muestra descripción o dirección si existe */}
+            <Text style={styles.routeDetails} numberOfLines={1} ellipsizeMode="tail">
+                {challenge.descripcion || challenge.direccion || 'Detalles no disponibles'}
+            </Text>
         </View>
-        <Chip style={styles.pointsChip}>+{route.points} pts</Chip>
+        {/* Muestra los puntos otorgados */}
+        <Chip style={[styles.pointsChip, { backgroundColor: theme.colors.secondaryContainer }]}>+{challenge.puntos_otorgados} pts</Chip>
     </View>
-);
+  );
+};
 
 
 export default function EcologicalRoutes() {
+  const { challenges, loadingChallenges } = useUser(); // Obtiene los retos y el estado de carga
+  const theme = useTheme();
+
   return (
     <Card style={styles.card}>
         <Card.Content>
             <View style={styles.header}>
                 <Icon name="map-marker-path" size={24} color="#333" />
-                <Text style={styles.title}>Rutas Ecológicas Cercanas</Text>
+                {/* Cambiamos el título para reflejar que son retos */}
+                <Text style={styles.title}>Retos Cercanos / Disponibles</Text>
             </View>
-            <Text style={styles.subtitle}>Descubre senderos eco-amigables a tu alrededor</Text>
+            <Text style={styles.subtitle}>Descubre y completa retos a tu alrededor</Text>
 
-            {/* Aquí puedes agregar la imagen decorativa del mapa si lo deseas */}
-            {/* <Image source={...} style={styles.mapImage} /> */}
-
-            {routes.map(route => <RouteItem key={route.id} route={route} />)}
+            {/* Muestra indicador de carga si loadingChallenges es true */}
+            {loadingChallenges ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator animating={true} color={theme.colors.primary} />
+                    <Text style={{ marginTop: 8, color: theme.colors.backdrop }}>Cargando retos...</Text>
+                </View>
+            // Muestra mensaje si no hay retos después de cargar
+            ) : challenges.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: theme.colors.backdrop, marginVertical: 20 }}>
+                    No hay retos activos disponibles por el momento.
+                </Text>
+            // Mapea y muestra los retos si existen
+            ) : (
+                challenges.map(challenge => <ChallengeItem key={challenge.id} challenge={challenge} />)
+            )}
 
         </Card.Content>
     </Card>
   );
 }
 
+// Estilos (se mantienen similares, se añade loadingContainer)
 const styles = StyleSheet.create({
   card: {
     backgroundColor: 'white',
@@ -82,6 +110,7 @@ const styles = StyleSheet.create({
   },
   routeInfo: {
       flex: 1,
+      marginRight: 8, // Añade margen para que no se pegue al chip
   },
   routeName: {
       fontWeight: 'bold',
@@ -91,6 +120,11 @@ const styles = StyleSheet.create({
       fontSize: 12,
   },
   pointsChip: {
-      backgroundColor: '#D4EDDA', // Un verde claro
+      // backgroundColor: '#D4EDDA', // Color se define inline con theme
+  },
+  loadingContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 20,
   }
 });

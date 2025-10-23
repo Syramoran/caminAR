@@ -1,24 +1,28 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useUser } from '../../context/UserContext';
+// Quitamos la importación de Icon si no se usa aquí directamente
+import { useUser } from '../../context/UserContext'; // Importamos el hook useUser
 
 export const HomeHeader = () => {
   const theme = useTheme();
-  const { userName } = useUser();
-  const points = 1247;
-  const level = 5;
+  // Usamos el hook para obtener los datos necesarios del usuario logueado
+  const { username, totalScore, loadingProfile } = useUser(); // Obtenemos username y totalScore
+
+  // Podemos usar loadingProfile para mostrar un placeholder si es necesario
+  // const level = 5; // Mantenemos el nivel como local por ahora
 
   return (
     <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
       <View style={styles.row}>
         <View>
-          <Text variant="headlineMedium" style={styles.headerTitle}>Hola, {userName}</Text>
+          {/* Muestra el username del contexto */}
+          <Text variant="headlineMedium" style={styles.headerTitle}>Hola, {username}</Text>
           <Text style={styles.headerSubtitle}>¿Listo para la eco-aventura de hoy?</Text>
         </View>
         <View style={styles.pointsContainer}>
-          <Text style={styles.pointsValue}>{points}</Text>
+          {/* Muestra el totalScore del contexto. Usamos ?? 0 por si acaso es null/undefined inicialmente */}
+          <Text style={styles.pointsValue}>{loadingProfile ? '...' : (totalScore ?? 0)}</Text>
           <Text style={styles.pointsLabel}>Puntos Eco</Text>
         </View>
       </View>
@@ -26,6 +30,7 @@ export const HomeHeader = () => {
   );
 };
 
+// Los estilos se mantienen igual
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,

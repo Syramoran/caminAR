@@ -1,45 +1,54 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Avatar, Text, IconButton, ProgressBar, useTheme } from 'react-native-paper';
+import { Avatar, Text, IconButton, ProgressBar, useTheme, ActivityIndicator } from 'react-native-paper'; // Importa ActivityIndicator
 import { Link } from 'expo-router';
-import { useUser } from '../../context/UserContext';
+import { useUser } from '../../context/UserContext'; // Verifica que la ruta sea correcta
 
 export const ProfileHeader = () => {
   const theme = useTheme();
-  // 1. Obtenemos TODA la información del usuario desde el contexto
-  const { profileImage, userName, userHandle } = useUser();
+  // 1. Obtenemos la información relevante del contexto, incluyendo el estado de carga
+  const { profileImage, username, totalScore, loadingProfile } = useUser();
 
-  const progress = 1250 / 1500;
+  // Define un puntaje objetivo para el nivel actual o próximo (puedes ajustar esto)
+  const scoreNeededForNextLevel = 1500;
+  const progress = loadingProfile ? 0 : (totalScore || 0) / scoreNeededForNextLevel;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.primary }]}>
       <View style={styles.userInfo}>
+        {/* Muestra la imagen de perfil o un fallback */}
         <Avatar.Image
           size={64}
-          source={{ uri: profileImage || 'https://avatar.iran.liara.run/public/47' }}
+          source={{ uri: profileImage || 'https://avatar.iran.liara.run/public/47' }} // Usa la imagen del contexto
         />
         <View style={styles.userInfoText}>
-          {/* 2. Mostramos el nombre y usuario del contexto */}
-          <Text variant="headlineSmall" style={styles.name}>{userName}</Text>
-          <Text style={styles.username}>{userHandle}</Text>
+          {/* Muestra el nombre de usuario o "Cargando..." */}
+          <Text variant="headlineSmall" style={styles.name}>
+            {loadingProfile ? 'Cargando...' : (username || 'Usuario')}
+          </Text>
+          {/* Ya no mostramos userHandle ya que no está en la DB */}
         </View>
         <Link href="/configuracion" asChild>
           <IconButton icon="cog-outline" iconColor="#FFF" />
         </Link>
       </View>
       <View style={styles.progressContainer}>
-        <Text style={styles.levelText}>Nivel 5</Text>
+        {/* Puedes calcular el nivel basado en totalScore si lo deseas */}
+        <Text style={styles.levelText}>Nivel ?</Text>
         <ProgressBar progress={progress} color="#FFF" style={styles.progressBar} />
-        <Text style={styles.pointsText}>1250/1500 puntos</Text>
+        {/* Muestra el puntaje total o "..." mientras carga */}
+        <Text style={styles.pointsText}>
+            {loadingProfile ? '...' : (totalScore ?? 0)}/{scoreNeededForNextLevel} pts
+        </Text>
       </View>
     </View>
   );
 };
 
-// ... (los estilos se mantienen igual)
+// --- Estilos ---
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 50,
+    paddingTop: 50, // Ajusta según sea necesario para SafeArea/StatusBar
     paddingHorizontal: 16,
     paddingBottom: 16,
     borderBottomLeftRadius: 20,
@@ -58,9 +67,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
   },
-  username: {
-    color: '#FFF',
-  },
+  // Eliminamos el estilo username ya que no se usa
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -78,6 +85,8 @@ const styles = StyleSheet.create({
   pointsText: {
     color: '#FFF',
     marginLeft: 8,
+    minWidth: 80, // Ancho mínimo para evitar saltos al cargar
+    textAlign: 'right',
   },
 });
 
