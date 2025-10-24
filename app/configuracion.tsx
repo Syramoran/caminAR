@@ -37,8 +37,8 @@ export default function ConfiguracionScreen() {
     profileType, // Este es el 'tipo_perfil' de la DB
     updateProfile,
     loadingProfile,
-    // nombre, // Descomentar si la columna 'nombre' existe y quieres mostrarla/editarla
-    // apellido, // Descomentar si la columna 'apellido' existe y quieres mostrarla/editarla
+    nombre, // Descomentar si la columna 'nombre' existe y quieres mostrarla/editarla
+    apellido, // Descomentar si la columna 'apellido' existe y quieres mostrarla/editarla
     // Los siguientes son locales y no se guardan en DB, decide si los necesitas aquí
     // userHandle,
     // age,
@@ -49,8 +49,8 @@ export default function ConfiguracionScreen() {
 
   // 2. Estados locales (solo los que se muestran/editan y SÍ existen en DB)
   const [localUsername, setLocalUsername] = useState(username);
-  // const [localNombre, setLocalNombre] = useState(nombre || ''); // Descomentar si se usa
-  // const [localApellido, setLocalApellido] = useState(apellido || ''); // Descomentar si se usa
+  const [localNombre, setLocalNombre] = useState(nombre || ''); // Descomentar si se usa
+  const [localApellido, setLocalApellido] = useState(apellido || ''); // Descomentar si se usa
   const [localProfileType, setLocalProfileType] = useState(profileType);
   // Ya no hay estados locales para age, userHandle, isPrivate, notifications
 
@@ -62,8 +62,8 @@ export default function ConfiguracionScreen() {
   useEffect(() => {
     setLocalUsername(username);
     setLocalProfileType(profileType);
-    // setLocalNombre(nombre || ''); // Descomentar si se usa
-    // setLocalApellido(apellido || ''); // Descomentar si se usa
+    setLocalNombre(nombre || ''); // Descomentar si se usa
+    setLocalApellido(apellido || ''); // Descomentar si se usa
   }, [username, profileType/*, nombre, apellido*/]);
 
   // 3. Función de guardado (solo con campos existentes en DB)
@@ -72,8 +72,8 @@ export default function ConfiguracionScreen() {
     // Solo incluimos campos que SÍ existen en la DB
     const updates: Partial<UserProfileData> = {
       usuario: localUsername,
-      // nombre: localNombre, // Descomentar si existen y se editan
-      // apellido: localApellido, // Descomentar si existen y se editan
+      nombre: localNombre, // Descomentar si existen y se editan
+      apellido: localApellido, // Descomentar si existen y se editan
       tipo_perfil: profileTypeToSupabase(localProfileType),
       // NO incluimos NADA MÁS que no esté en la tabla 'usuarios'
     };
@@ -87,8 +87,8 @@ export default function ConfiguracionScreen() {
         switch(typedKey) {
             case 'usuario': originalValue = username; break;
             case 'tipo_perfil': originalValue = profileTypeToSupabase(profileType); break;
-            // case 'nombre': originalValue = nombre; break; // Descomentar si se usa
-            // case 'apellido': originalValue = apellido; break; // Descomentar si se usa
+            case 'nombre': originalValue = nombre; break; // Descomentar si se usa
+            case 'apellido': originalValue = apellido; break; // Descomentar si se usa
             default: break;
         }
         if (updates[typedKey] !== originalValue) {
@@ -251,8 +251,8 @@ export default function ConfiguracionScreen() {
             {/* Usa localUsername que se sincroniza con 'usuario' */}
             <TextInput label="Nombre de usuario (público)" value={localUsername} onChangeText={setLocalUsername} mode="outlined" style={styles.input} />
             {/* Campos nombre y apellido comentados */}
-            {/* <TextInput label="Nombre real" value={localNombre} onChangeText={setLocalNombre} mode="outlined" style={styles.input} /> */}
-            {/* <TextInput label="Apellido" value={localApellido} onChangeText={setLocalApellido} mode="outlined" style={styles.input} /> */}
+            <TextInput label="Nombre real" value={localNombre} onChangeText={setLocalNombre} mode="outlined" style={styles.input} />
+            <TextInput label="Apellido" value={localApellido} onChangeText={setLocalApellido} mode="outlined" style={styles.input} />
           </Card.Content>
         </Card>
 

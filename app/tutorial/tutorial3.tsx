@@ -9,12 +9,22 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'react-native-paper'; // Import useTheme
 
 const { width } = Dimensions.get('window');
 
 export default function TutorialStep3() {
+  const theme = useTheme(); // Get theme colors
+
   const handleNext = () => {
     // Navega a la siguiente pantalla de la app y reemplaza la historia de navegación
+    console.log("LOG: [Tutorial3] Finalizando tutorial...");
+    router.replace('/(tabs)');
+  };
+
+  const handleSkip = () => {
+    // Navega a la pantalla principal y reemplaza la historia
+    console.log("LOG: [Tutorial3] Saltando tutorial...");
     router.replace('/(tabs)');
   };
 
@@ -43,10 +53,15 @@ export default function TutorialStep3() {
           </Text>
         </View>
 
-        {/* Botón de navegación */}
+        {/* Botones de navegación */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity onPress={handleNext} style={styles.button}>
+          {/* Botón Comenzar */}
+          <TouchableOpacity onPress={handleNext} style={[styles.button, { backgroundColor: theme.colors.primary }]}>
             <Text style={styles.buttonText}>Comenzar</Text>
+          </TouchableOpacity>
+          {/* Botón Saltar */}
+          <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
+            <Text style={[styles.skipButtonText, { color: theme.colors.onSurfaceVariant }]}>Saltar Tutorial</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -54,6 +69,7 @@ export default function TutorialStep3() {
   );
 }
 
+// Reuse styles from TutorialStep1 by copying them
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -80,6 +96,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 20,
   },
   title: {
     fontSize: 28,
@@ -97,19 +114,31 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     paddingBottom: 40,
+    alignItems: 'center',
   },
   button: {
-    backgroundColor: '#4CAF50',
+    // backgroundColor is now set using theme
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 30,
     width: '80%',
     alignSelf: 'center',
+    marginBottom: 10,
   },
   buttonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  skipButton: {
+    paddingVertical: 10,
+    width: '80%',
+    alignSelf: 'center',
+  },
+  skipButtonText: {
+    // color is set using theme
+    fontSize: 16,
     textAlign: 'center',
   },
 });

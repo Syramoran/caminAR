@@ -9,13 +9,22 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from 'react-native-paper'; // Import useTheme
 
 const { width } = Dimensions.get('window');
 
 export default function TutorialStep1() {
+  const theme = useTheme(); // Get theme colors
+
   const handleNext = () => {
     // Navega a la siguiente pantalla del tutorial
     router.push('./tutorial2');
+  };
+
+  const handleSkip = () => {
+    // Navega a la pantalla principal y reemplaza la historia
+    console.log("LOG: [Tutorial1] Saltando tutorial...");
+    router.replace('/(tabs)');
   };
 
   return (
@@ -43,10 +52,15 @@ export default function TutorialStep1() {
           </Text>
         </View>
 
-        {/* Botón de navegación */}
+        {/* Botones de navegación */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity onPress={handleNext} style={styles.button}>
+          {/* Botón Siguiente */}
+          <TouchableOpacity onPress={handleNext} style={[styles.button, { backgroundColor: theme.colors.primary }]}>
             <Text style={styles.buttonText}>Siguiente</Text>
+          </TouchableOpacity>
+          {/* Botón Saltar */}
+          <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
+            <Text style={[styles.skipButtonText, { color: theme.colors.onSurfaceVariant }]}>Saltar Tutorial</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -80,6 +94,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 20, // Add some top padding
   },
   title: {
     fontSize: 28,
@@ -97,19 +112,31 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     paddingBottom: 40,
+    alignItems: 'center', // Center buttons horizontally
   },
   button: {
-    backgroundColor: '#4CAF50',
+    // backgroundColor is now set using theme
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 30,
     width: '80%',
     alignSelf: 'center',
+    marginBottom: 10, // Add margin below the main button
   },
   buttonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  skipButton: {
+    paddingVertical: 10, // Slightly smaller padding
+    width: '80%',
+    alignSelf: 'center',
+  },
+  skipButtonText: {
+    // color is set using theme
+    fontSize: 16, // Slightly smaller font size
     textAlign: 'center',
   },
 });
