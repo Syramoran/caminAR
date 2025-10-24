@@ -1,28 +1,30 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Image, StyleSheet, View } from "react-native";
+import { Alert, Image, StyleSheet, View, ActivityIndicator } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import MapView, { Marker, Region } from "react-native-maps";
-import { ActivityIndicator, Appbar, Button, Card, Dialog, Portal, Text, useTheme } from "react-native-paper";
+// *** Importar TextInput de react-native-paper ***
+import { Appbar, Button, Card, Dialog, Portal, Text, TextInput, useTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
-
-// Importa useUser y la interfaz Reto del contexto global
 import { useUser, Reto } from '../context/UserContext';
-// Ya no necesitamos MOCK_POINTS ni MapPoint
+import { useAuth } from "../context/AuthContext";
 
 export default function MapaScreen() {
   const theme = useTheme();
   const router = useRouter();
   const [region, setRegion] = useState<Region | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
-  // Cambiamos selectedPoint por selectedChallenge
   const [selectedChallenge, setSelectedChallenge] = useState<Reto | null>(null);
-  // Obtenemos los retos y el estado de carga del UserContext
-  const { challenges, loadingChallenges } = useUser();
-  // Ya no necesitamos updateProgress ni completeWithPhoto directamente aquí
+  // *** Añadir estado para la descripción ***
+  const [description, setDescription] = useState('');
+  // *** Obtener completedChallengeIds y loadingCompletedChallenges ***
+  const { challenges, loadingChallenges, completeChallenge, completedChallengeIds, loadingCompletedChallenges } = useUser();
+  const { user } = useAuth();
+  const [isCompleting, setIsCompleting] = useState(false);
 
   useEffect(() => {
     (async () => {
+        // ... (lógica de permisos y obtención de ubicación sin cambios) ...
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permiso requerido", "Necesitamos tu ubicación para mostrarte puntos cercanos.");
@@ -45,7 +47,7 @@ export default function MapaScreen() {
       } catch (error) {
          console.error("Error getting current location:", error);
          Alert.alert("Error de Ubicación", "No se pudo obtener tu ubicación actual. Mostrando ubicación por defecto.");
-          setRegion({ // Fallback a Concordia si falla getCurrentPositionAsync
+          setRegion({ // Fallback a Concordia
             latitude: -31.394,
             longitude: -58.018,
             latitudeDelta: 0.02,
@@ -56,7 +58,7 @@ export default function MapaScreen() {
   }, []);
 
   const openCamera = async () => {
-    // Permisos y lógica de cámara sin cambios
+    // ... (lógica de cámara sin cambios) ...
      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
      if (!cameraPermission.granted) {
        Alert.alert("Cámara", "Necesitamos permisos de cámara para subir evidencia.");
@@ -64,58 +66,74 @@ export default function MapaScreen() {
      }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaType.Images, // API Moderna
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [4, 3], // O ajusta según necesites
-      quality: 0.7,
+      aspect: [4, 3],
+      quality: 0.7, // Calidad moderada para reducir tamaño
+      base64: false, // No necesitamos base64 si usamos la URI
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setPhoto(result.assets[0].uri);
+      setDescription(''); // Limpiar descripción al tomar nueva foto
     }
   };
 
-  // Esta función necesita lógica para actualizar el estado en Supabase (tabla retos_completados)
-  // Por ahora, solo muestra un mensaje y cierra el modal/tarjeta.
-  const confirmEvidence = () => {
-    if (!selectedChallenge) return;
+  // Llama a la función del contexto para completar el reto
+  const confirmEvidence = async () => {
+    if (!selectedChallenge || !photo || !user) {
+        Alert.alert("Error", "Faltan datos para completar el reto.");
+        return;
+    }
 
-    // TODO: Implementar lógica para marcar el reto como completado en Supabase
-    // 1. Obtener el ID del usuario actual (desde useAuth o useUser)
-    // 2. Insertar un registro en la tabla 'retos_completados' con usuario_id y reto_id (selectedChallenge.id)
-    // 3. Opcionalmente, incrementar 'completaciones_actuales' en la tabla 'retos' si max_completaciones > 1
-    // 4. Opcionalmente, actualizar 'puntaje_total' en la tabla 'usuarios'
-    // 5. Considerar manejo de errores y feedback al usuario
-    console.log(`Simulando completar reto: ${selectedChallenge.titulo} (ID: ${selectedChallenge.id})`);
-    console.log(`Foto URI: ${photo}`);
+    setIsCompleting(true);
+    try {
+        console.log(`[MapaScreen] Intentando completar reto ${selectedChallenge.id} con foto ${photo} y descripción "${description}"`);
+        // *** Pasar la descripción a completeChallenge ***
+        const result = await completeChallenge(selectedChallenge, photo, description);
 
-    setPhoto(null);
-    setSelectedChallenge(null);
-    Alert.alert("¡Evidencia Registrada!", "Tu participación ha sido registrada (simulación).");
+        if (result.success) {
+            Alert.alert(
+                "¡Reto Completado!",
+                `Has ganado ${selectedChallenge.puntos_otorgados} puntos por completar "${selectedChallenge.titulo}".`
+            );
+            setPhoto(null);
+            setSelectedChallenge(null);
+            setDescription(''); // Limpiar descripción
+        } else {
+            // *** Mostrar mensaje de error del contexto si existe ***
+            Alert.alert("Error al completar", result.message || "No se pudo completar el reto. Revisa tu conexión e inténtalo de nuevo.");
+        }
+    } catch (error: any) {
+        console.error("[MapaScreen] Error en confirmEvidence:", error);
+        Alert.alert("Error Inesperado", `Ocurrió un problema: ${error.message}`);
+    } finally {
+        setIsCompleting(false);
+    }
   };
 
-  // Función para determinar el color del marcador (ejemplo)
-  // Podrías basarlo en puntos_otorgados o tipo si tuvieras tipos
    const getPinColor = (challenge: Reto) => {
-     if (challenge.puntos_otorgados >= 200) return theme.colors.error; // Rojo para retos difíciles
-     if (challenge.puntos_otorgados >= 100) return theme.colors.primary; // Verde para normales
-     return theme.colors.secondary; // Lima para fáciles
+     // *** NUEVO: Usar gris si ya está completado ***
+     if (completedChallengeIds.has(challenge.id)) {
+        return theme.colors.backdrop; // Gris o un color que indique completado
+     }
+     if (challenge.puntos_otorgados >= 200) return theme.colors.error;
+     if (challenge.puntos_otorgados >= 100) return theme.colors.primary;
+     return theme.colors.secondary;
    };
 
-
-  // Muestra carga si la región o los retos aún no están listos
-  if (!region || loadingChallenges) {
+  // *** Mostrar carga si aún no se cargaron los retos completados ***
+  if (!region || loadingChallenges || loadingCompletedChallenges) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator animating size="large" color={theme.colors.primary}/>
         <Text style={{ marginTop: 16 }}>
-            { !region ? "Obteniendo ubicación..." : "Cargando retos..." }
+            { !region ? "Obteniendo ubicación..." : "Cargando datos..." }
         </Text>
       </View>
     );
   }
 
-  // Filtra los retos que tienen coordenadas válidas
   const challengesWithLocation = challenges.filter(c => c.latitud != null && c.longitud != null);
 
   return (
@@ -125,28 +143,43 @@ export default function MapaScreen() {
         <Appbar.Content title="Mapa Interactivo" titleStyle={{ color: '#fff' }}/>
       </Appbar.Header>
       <MapView style={{ flex: 1 }} initialRegion={region}>
-        {/* Mapea los retos con ubicación para crear los Markers */}
         {challengesWithLocation.map((challenge) => (
           <Marker
             key={challenge.id}
             coordinate={{ latitude: challenge.latitud!, longitude: challenge.longitud! }}
             title={challenge.titulo}
-            description={`${challenge.puntos_otorgados} pts - ${challenge.descripcion.substring(0, 50)}...`} // Muestra puntos y descripción corta
-            pinColor={getPinColor(challenge)} // Color basado en puntos (ejemplo)
-            onPress={() => setSelectedChallenge(challenge)} // Guarda el reto seleccionado
+            description={
+                completedChallengeIds.has(challenge.id)
+                ? '¡Ya completado!'
+                : `${challenge.puntos_otorgados} pts`
+            }
+            pinColor={getPinColor(challenge)}
+            // *** Deshabilitar onPress si ya está completado ***
+            onPress={() => {
+                if (!completedChallengeIds.has(challenge.id)) {
+                    setSelectedChallenge(challenge);
+                    setPhoto(null); // Asegurar que no hay foto al seleccionar
+                    setDescription(''); // Limpiar descripción
+                } else {
+                    Alert.alert("Reto Completado", "Ya has completado este reto.");
+                }
+            }}
           />
         ))}
-         {/* Marcador opcional para la ubicación actual del usuario */}
          <Marker coordinate={region} pinColor="blue" title="Tu Ubicación" />
       </MapView>
 
-      {/* Tarjeta inferior para el reto seleccionado */}
-      {selectedChallenge && (
+      {selectedChallenge && !photo && (
         <Card style={styles.bottomCard}>
-          <Card.Title title={`¿Estás en "${selectedChallenge.titulo}"?`} titleVariant="titleMedium" subtitle={`${selectedChallenge.puntos_otorgados} Puntos`} />
+          <Card.Title
+            title={`¿Estás en "${selectedChallenge.titulo}"?`}
+            titleVariant="titleMedium"
+            subtitle={`${selectedChallenge.puntos_otorgados} Puntos`}
+            right={(props) => <IconButton {...props} icon="close-circle" onPress={() => setSelectedChallenge(null)} />}
+           />
           <Card.Content>
             <Text variant="bodyMedium">
-              Subí una foto como evidencia para completar el reto.
+              Toma una foto como evidencia para completar el reto.
             </Text>
             {selectedChallenge.direccion && (
                  <Text variant="bodySmall" style={{color: theme.colors.backdrop, marginTop: 4 }}>
@@ -155,22 +188,42 @@ export default function MapaScreen() {
             )}
           </Card.Content>
           <Card.Actions>
-            <Button onPress={() => setSelectedChallenge(null)}>Cancelar</Button>
-            <Button mode="contained" onPress={openCamera} icon="camera">Abrir cámara</Button>
+            <Button mode="contained" onPress={openCamera} icon="camera" style={{flex: 1}} labelStyle={{fontSize: 16}}>
+                Tomar Foto
+            </Button>
           </Card.Actions>
         </Card>
       )}
 
-      {/* Modal de confirmación (sin cambios en la estructura, solo en la lógica de confirmEvidence) */}
+      {/* Modal de confirmación con TextInput para descripción */}
       <Portal>
-        <Dialog visible={!!photo} onDismiss={() => setPhoto(null)}>
+        <Dialog visible={!!photo} onDismiss={() => { if (!isCompleting) setPhoto(null); }}>
             <Dialog.Title>Confirmar evidencia</Dialog.Title>
             <Dialog.Content>
                 {photo && <Image source={{ uri: photo }} style={styles.modalImage} />}
+                {/* *** Añadir TextInput para descripción *** */}
+                <TextInput
+                    label="Añadir comentario (opcional)"
+                    value={description}
+                    onChangeText={setDescription}
+                    mode="outlined"
+                    style={styles.descriptionInput}
+                    multiline
+                    numberOfLines={2}
+                    disabled={isCompleting}
+                />
+                {isCompleting && (
+                    <View style={styles.loadingOverlay}>
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
+                        <Text style={{marginTop: 10}}>Completando reto...</Text>
+                    </View>
+                )}
             </Dialog.Content>
             <Dialog.Actions>
-                <Button onPress={() => setPhoto(null)}>Cancelar</Button>
-                <Button mode="contained" onPress={confirmEvidence}>Confirmar</Button>
+                <Button onPress={() => setPhoto(null)} disabled={isCompleting}>Cancelar</Button>
+                <Button mode="contained" onPress={confirmEvidence} disabled={isCompleting} loading={isCompleting}>
+                    {isCompleting ? 'Enviando...' : 'Confirmar'}
+                </Button>
             </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -186,16 +239,35 @@ const styles = StyleSheet.create({
   },
   bottomCard: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 32, // Ajusta si se superpone con la barra de pestañas
-    elevation: 4,
-    backgroundColor: 'white', // Asegura fondo blanco
+    left: 10,
+    right: 10,
+    bottom: 10,
+    elevation: 8,
+    borderRadius: 15,
+    backgroundColor: 'white',
   },
   modalImage: {
     width: '100%',
-    height: 300,
-    borderRadius: 12,
-    resizeMode: 'contain', // Ajusta cómo se muestra la imagen
+    height: 200, // Reducir un poco para dar espacio al input
+    borderRadius: 8,
+    resizeMode: 'contain',
+    marginBottom: 10,
   },
+  // *** Estilo para el TextInput de descripción ***
+  descriptionInput: {
+      marginTop: 10,
+      marginBottom: 15,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+  }
 });
+
