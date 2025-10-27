@@ -1,11 +1,45 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Card, Text, Chip, useTheme } from 'react-native-paper';
+import { StyleSheet, View, Alert } from 'react-native';
+// Add Button import
+import { Card, Text, Chip, useTheme, Button } from 'react-native-paper';
 import { Reward } from '../../models/types';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useUser } from '../../context/UserContext'; // Import useUser to check points
 
-export default function AvailableRewardCard({ r }: { r: Reward }) {
+// Add onRedeem and isAlreadyRedeemed props
+export default function AvailableRewardCard({ r, onRedeem, isAlreadyRedeemed }: { r: Reward, onRedeem: (reward: Reward) => void, isAlreadyRedeemed: boolean }) {
   const theme = useTheme();
+  const { totalScore } = useUser(); // Get user's points
+
+  const canAfford = totalScore >= r.pointsRequired;
+  // Check availability (current > 0 OR total is 0/null indicating unlimited)
+  const isAvailable = r.availability.total === 0 || r.availability.current > 0;
+  // Can redeem only if affordable, available AND not already redeemed
+  const canRedeem = canAfford && isAvailable && !isAlreadyRedeemed;
+
+  const handlePressRedeem = () => {
+    // Show specific alerts based on why redemption is not possible
+    if (isAlreadyRedeemed) {
+        Alert.alert("Ya Canjeado", "Ya has canjeado este premio anteriormente.");
+        return;
+    }
+    if (!canAfford) {
+        Alert.alert("Puntos insuficientes", `Necesitas ${r.pointsRequired} puntos para canjear este premio.`);
+        return;
+    }
+    if (!isAvailable) {
+        Alert.alert("No disponible", "Este premio ya no está disponible.");
+        return;
+    }
+
+    // Call the passed function if all checks pass
+    onRedeem(r);
+  };
+
+  // Determine button label based on state
+  const buttonLabel = isAlreadyRedeemed ? 'Ya canjeado' :
+                      canAfford ? (isAvailable ? 'Canjear' : 'No disponible') :
+                      'Puntos insuficientes';
 
   return (
     <Card style={styles.card} mode="elevated">
@@ -13,7 +47,12 @@ export default function AvailableRewardCard({ r }: { r: Reward }) {
         <Card.Cover source={{ uri: r.imageUrl }} style={styles.cover} />
         <View style={styles.overlay}>
           <Chip style={styles.categoryChip} textStyle={{color: 'white'}}>{r.category}</Chip>
-          <Chip style={styles.pointsChip} textStyle={{ color: theme.colors.primary, fontWeight: 'bold' }}>{r.pointsRequired} pts</Chip>
+          <Chip
+             style={[styles.pointsChip, !canAfford && styles.pointsChipDisabled]} // Style if cannot afford
+             textStyle={{ color: canAfford ? theme.colors.primary : theme.colors.error, fontWeight: 'bold' }}
+           >
+             {r.pointsRequired} pts
+          </Chip>
         </View>
       </View>
       <Card.Content style={styles.content}>
@@ -28,11 +67,30 @@ export default function AvailableRewardCard({ r }: { r: Reward }) {
           <Icon name="map-marker" size={16} color="#666" />
           <Text style={styles.infoText}>{r.locations}</Text>
         </View>
-        <View style={styles.availability}>
-          <Text style={styles.infoText}>Disponibilidad</Text>
-          <Text style={styles.availabilityCount}>{r.availability.current} de {r.availability.total}</Text>
-        </View>
+        {/* Only show availability if it's limited (total > 0) */}
+        {r.availability.total > 0 && (
+            <View style={styles.availability}>
+            <Text style={styles.infoText}>Disponibilidad</Text>
+            <Text style={[styles.availabilityCount, !isAvailable && styles.availabilityNone]}>
+                {isAvailable ? `${r.availability.current} de ${r.availability.total}` : 'Agotado'}
+            </Text>
+            </View>
+        )}
       </Card.Content>
+       {/* Add Redeem Button */}
+       <Card.Actions style={styles.actions}>
+            <Button
+                mode="contained"
+                icon="gift-outline"
+                onPress={handlePressRedeem}
+                 // Disable if canRedeem is false (covers all conditions)
+                disabled={!canRedeem}
+                style={[styles.redeemButton, isAlreadyRedeemed && styles.redeemedButton]} // Add specific style if already redeemed
+                labelStyle={styles.redeemButtonLabel}
+            >
+               {buttonLabel}
+            </Button>
+       </Card.Actions>
     </Card>
   );
 }
@@ -50,6 +108,7 @@ const styles = StyleSheet.create({
   },
   categoryChip: { backgroundColor: 'rgba(0,0,0,0.5)' },
   pointsChip: { backgroundColor: 'white' },
+  pointsChipDisabled: { backgroundColor: '#ffebee' }, // Light red background if cannot afford
   content: { paddingTop: 16 },
   title: { fontWeight: 'bold', marginBottom: 4 },
   partner: { color: '#666', marginBottom: 8 },
@@ -65,5 +124,20 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
   },
   availabilityCount: { fontWeight: 'bold', color: '#333' },
+  availabilityNone: { color: 'red', fontWeight: 'bold' }, // Style for 'Agotado'
+  actions: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    justifyContent: 'flex-end', // Align button to the right
+  },
+  redeemButton: {
+    borderRadius: 20,
+  },
+   redeemedButton: {
+      backgroundColor: '#e0e0e0', // Grey out button if already redeemed
+   },
+  redeemButtonLabel: {
+    // Style for the button text if needed
+  },
 });
 

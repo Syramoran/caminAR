@@ -8,7 +8,6 @@ import {
   Divider,
   List,
   Menu,
-  // Switch, // Ya no se necesita Switch
   Text,
   TextInput,
   useTheme,
@@ -16,88 +15,87 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { useUser } from '../context/UserContext'; // Importa useUser actualizado
-import { useAuth } from '../context/AuthContext'; // Importa useAuth para signOut
-import { UserProfileData } from '../context/UserContext'; // Importar la interfaz para el tipado
+import { useUser, UserProfileData } from '../context/UserContext';
+import { useAuth } from '../context/AuthContext';
 
-// --- Mapeo de tipos de perfil ---
-const profileTypeToSupabase = (type: 'common' | 'company'): 'usuario' | 'organizacion' => {
-    return type === 'company' ? 'organizacion' : 'usuario';
-};
+// We keep the local mapping for UI state, but UserContext will handle DB mapping
+// const profileTypeToSupabase = (type: 'common' | 'company'): 'usuario' | 'organizacion' => {
+//     return type === 'company' ? 'organizacion' : 'usuario';
+// };
 
 export default function ConfiguracionScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const IMG_BB_API_KEY = 'fe710239ec2669c60deafe46f166c86d';
+  const IMG_BB_API_KEY = 'fe710239ec2669c60deafe46f166c86d'; // Consider moving to env vars
 
-  // 1. Obtenemos datos y funciones de los contextos (solo los relevantes y existentes)
+  // 1. Get data from contexts
   const {
-    username, // Este es el 'usuario' de la DB
-    profileImage, // Este es el 'avatar_url' de la DB
-    profileType, // Este es el 'tipo_perfil' de la DB
+    username,
+    profileImage,
+    profileType, // This represents 'common' or 'company' from UserContext
     updateProfile,
     loadingProfile,
-    nombre, // Descomentar si la columna 'nombre' existe y quieres mostrarla/editarla
-    apellido, // Descomentar si la columna 'apellido' existe y quieres mostrarla/editarla
-    // Los siguientes son locales y no se guardan en DB, decide si los necesitas aquí
-    // userHandle,
-    // age,
-    // isPrivate,
+    nombre,
+    apellido,
+    isOrganization, // Get the boolean value from context
   } = useUser();
 
   const { signOut } = useAuth();
 
-  // 2. Estados locales (solo los que se muestran/editan y SÍ existen en DB)
+  // 2. Local states initialized from context
   const [localUsername, setLocalUsername] = useState(username);
-  const [localNombre, setLocalNombre] = useState(nombre || ''); // Descomentar si se usa
-  const [localApellido, setLocalApellido] = useState(apellido || ''); // Descomentar si se usa
-  const [localProfileType, setLocalProfileType] = useState(profileType);
-  // Ya no hay estados locales para age, userHandle, isPrivate, notifications
+  const [localNombre, setLocalNombre] = useState(nombre || '');
+  const [localApellido, setLocalApellido] = useState(apellido || '');
+  const [localProfileType, setLocalProfileType] = useState(profileType); // Still 'common' or 'company'
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
 
-  // Efecto para sincronizar estados locales con los del contexto
+  // Sync local states with context changes
   useEffect(() => {
     setLocalUsername(username);
     setLocalProfileType(profileType);
-    setLocalNombre(nombre || ''); // Descomentar si se usa
-    setLocalApellido(apellido || ''); // Descomentar si se usa
-  }, [username, profileType/*, nombre, apellido*/]);
+    setLocalNombre(nombre || '');
+    setLocalApellido(apellido || '');
+  }, [username, profileType, nombre, apellido]);
 
-  // 3. Función de guardado (solo con campos existentes en DB)
+  // 3. Save changes function - includes esOrganizacion
   const handleSaveChanges = async () => {
     setIsSaving(true);
-    // Solo incluimos campos que SÍ existen en la DB
+    // Include all fields that might be updated, including esOrganizacion
     const updates: Partial<UserProfileData> = {
       usuario: localUsername,
-      nombre: localNombre, // Descomentar si existen y se editan
-      apellido: localApellido, // Descomentar si existen y se editan
-      tipo_perfil: profileTypeToSupabase(localProfileType),
-      // NO incluimos NADA MÁS que no esté en la tabla 'usuarios'
+      nombre: localNombre,
+      apellido: localApellido,
+      // Pass the boolean directly based on the local UI selection
+      esOrganizacion: localProfileType === 'company',
+      // We don't need tipo_perfil here if esOrganizacion is the source of truth
     };
 
-    // (Opcional: lógica para enviar solo cambios)
+    // Logic to send only changed updates
     const changedUpdates: Partial<UserProfileData> = {};
     Object.keys(updates).forEach((key) => {
         const typedKey = key as keyof UserProfileData;
         let originalValue: any;
-        // Compara con los valores originales del contexto
         switch(typedKey) {
             case 'usuario': originalValue = username; break;
-            case 'tipo_perfil': originalValue = profileTypeToSupabase(profileType); break;
-            case 'nombre': originalValue = nombre; break; // Descomentar si se usa
-            case 'apellido': originalValue = apellido; break; // Descomentar si se usa
+            case 'nombre': originalValue = nombre; break;
+            case 'apellido': originalValue = apellido; break;
+            // Compare the new boolean with the one from context
+            case 'esOrganizacion': originalValue = isOrganization; break;
             default: break;
         }
+        // Use === for comparison, especially important for booleans
         if (updates[typedKey] !== originalValue) {
             changedUpdates[typedKey] = updates[typedKey];
         }
     });
 
+
     if (Object.keys(changedUpdates).length > 0) {
         console.log("Sending updates to Supabase:", changedUpdates);
+        // updateProfile now handles mapping 'esOrganizacion' correctly
         const success = await updateProfile(changedUpdates);
 
         if (success) {
@@ -108,24 +106,25 @@ export default function ConfiguracionScreen() {
         }
     } else {
          Alert.alert("Información", "No hay cambios para guardar.");
-         router.back(); // Volver aunque no haya cambios
+         router.back(); // Go back even if no changes
     }
 
     setIsSaving(false);
   };
 
-  // 4. Logout (sin cambios)
+  // 4. Logout (no changes)
   const handleLogout = () => {
     Alert.alert("Cerrar Sesión", "¿Estás seguro?", [
       { text: "Cancelar", style: "cancel" },
       { text: "Sí, cerrar sesión", onPress: async () => {
           await signOut();
+          // Reset navigation stack to prevent going back to authenticated screens
           router.replace('/login');
       }, style: 'destructive'}
     ]);
   };
 
-  // Selección de imagen (sin cambios)
+  // 5. Image selection (no changes)
   const handleSelectImage = async (source: 'gallery' | 'camera') => {
     let result;
     const options: ImagePicker.ImagePickerOptions = {
@@ -152,7 +151,7 @@ export default function ConfiguracionScreen() {
     }
   };
 
-  // 5. Subida de imagen y actualización del perfil (solo actualiza avatar_url)
+  // 6. Image upload and profile update (only updates avatar_url) - no changes
   const uploadImage = async (uri: string) => {
     setIsUploading(true);
     const formData = new FormData();
@@ -173,7 +172,7 @@ export default function ConfiguracionScreen() {
         const json = await response.json();
         if (json.data && json.data.url) {
             const imageUrl = json.data.url;
-            // Llama a updateProfile solo con avatar_url (columna que sí existe)
+            // Call updateProfile only with avatar_url
             const success = await updateProfile({ avatar_url: imageUrl });
             if (success) {
                 Alert.alert("Éxito", "La foto de perfil se actualizó correctamente.");
@@ -191,7 +190,7 @@ export default function ConfiguracionScreen() {
     }
   };
 
-  // Mostrar opciones de imagen (sin cambios)
+  // 7. Show image options (no changes)
   const showImageOptions = () => {
     Alert.alert(
       "Cambiar foto de perfil",
@@ -204,8 +203,8 @@ export default function ConfiguracionScreen() {
     );
   };
 
-  // Indicador de carga inicial
-  if (loadingProfile && !username) { // Usa username que viene del contexto ahora
+  // Initial loading indicator
+  if (loadingProfile && !username) {
      return (
         <SafeAreaView style={[styles.safeArea, {justifyContent: 'center', alignItems: 'center'}]}>
              <ActivityIndicator size="large" />
@@ -221,7 +220,7 @@ export default function ConfiguracionScreen() {
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* --- Sección de Perfil --- */}
+        {/* Profile Section */}
         <Card style={styles.card}>
           <Card.Title title="Perfil" left={(props) => <List.Icon {...props} icon="account-outline" />} />
           <Card.Content>
@@ -229,7 +228,6 @@ export default function ConfiguracionScreen() {
               {isUploading ? (
                 <ActivityIndicator size="large" color={theme.colors.primary} style={{height: 80}} />
               ) : (
-                // Usa profileImage que viene mapeado de avatar_url en useUser
                 <Avatar.Image size={80} source={{ uri: profileImage || 'https://avatar.iran.liara.run/public/47' }} />
               )}
               <Button icon="camera" mode="contained-tonal" onPress={showImageOptions} style={styles.changePhotoButton} disabled={isUploading || isSaving}>
@@ -238,25 +236,24 @@ export default function ConfiguracionScreen() {
             </View>
             <Divider style={styles.divider} />
             <Text style={styles.label}>Tipo de perfil</Text>
+            {/* Menu still controls localProfileType ('common' or 'company') */}
             <Menu visible={menuVisible} onDismiss={() => setMenuVisible(false)} anchor={
                 <Button mode="outlined" onPress={() => setMenuVisible(true)} icon={localProfileType === 'common' ? 'account-outline' : 'office-building-outline'} contentStyle={styles.dropdownButtonContent} style={styles.dropdownButton} labelStyle={{ color: theme.colors.onSurface }}>
-                  {localProfileType === 'common' ? 'Usuario común' : 'Empresa'}
+                  {localProfileType === 'common' ? 'Usuario común' : 'Organización'}
                 </Button>
             }>
               <Menu.Item onPress={() => { setLocalProfileType('common'); setMenuVisible(false); }} title="Usuario común" leadingIcon="account-outline"/>
-              <Menu.Item onPress={() => { setLocalProfileType('company'); setMenuVisible(false); }} title="Empresa" leadingIcon="office-building-outline"/>
+              <Menu.Item onPress={() => { setLocalProfileType('company'); setMenuVisible(false); }} title="Organización" leadingIcon="office-building-outline"/>
             </Menu>
             <Divider style={styles.divider} />
             <Text style={styles.label}>Información personal</Text>
-            {/* Usa localUsername que se sincroniza con 'usuario' */}
             <TextInput label="Nombre de usuario (público)" value={localUsername} onChangeText={setLocalUsername} mode="outlined" style={styles.input} />
-            {/* Campos nombre y apellido comentados */}
             <TextInput label="Nombre real" value={localNombre} onChangeText={setLocalNombre} mode="outlined" style={styles.input} />
             <TextInput label="Apellido" value={localApellido} onChangeText={setLocalApellido} mode="outlined" style={styles.input} />
           </Card.Content>
         </Card>
 
-        {/* --- Sección de Privacidad y Seguridad (eliminado is_private) --- */}
+        {/* Privacy Section (no changes needed here) */}
         <Card style={styles.card}>
             <Card.Title title="Privacidad y Seguridad" left={(props) => <List.Icon {...props} icon="lock-outline" />} />
             <Card.Content>
@@ -268,11 +265,9 @@ export default function ConfiguracionScreen() {
             </Card.Content>
         </Card>
 
-        {/* --- Sección de Notificaciones ELIMINADA --- */}
-
       </ScrollView>
 
-      {/* --- Botones de acción fijos --- */}
+      {/* Action Buttons */}
       <View style={[styles.footer, { backgroundColor: theme.colors.background }]}>
         <Button icon="content-save" mode="contained" onPress={handleSaveChanges} style={styles.footerButton} disabled={isSaving || isUploading || loadingProfile} loading={isSaving}>
           {isSaving ? 'Guardando...' : 'Guardar cambios'}
@@ -285,7 +280,7 @@ export default function ConfiguracionScreen() {
   );
 }
 
-// Estilos (sin cambios)
+// Styles (no changes)
 const styles = StyleSheet.create({
     safeArea: { flex: 1 },
     scrollContainer: { padding: 16, paddingBottom: 32 },
@@ -305,4 +300,3 @@ const styles = StyleSheet.create({
     dropdownButton: { backgroundColor: 'white', height: 56, justifyContent: 'center', borderColor: '#79747E' },
     dropdownButtonContent: { justifyContent: 'flex-start' },
 });
-

@@ -1,15 +1,13 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
-import { uploadImage } from '../lib/storage'; // Usará la versión actualizada de ImgBB
-import { Alert } from 'react-native'; // Importar Alert para mensajes
+import { uploadImage } from '../lib/storage'; // Assuming this uses ImgBB now
+import { Alert } from 'react-native';
 
 // --- Interfaces ---
-// ... (Interfaces Reto, UserProfileData no cambian) ...
 
-// Interfaz para la tabla 'retos'
 export interface Reto {
-  id: number; // Numérico según schema
+  id: number;
   titulo: string;
   descripcion: string;
   puntos_otorgados: number;
@@ -18,122 +16,133 @@ export interface Reto {
   direccion?: string | null;
   fecha_inicio?: string | null;
   fecha_fin?: string | null;
-  usuario_creador_id?: number | null; // Numérico según schema
+  usuario_creador_id?: number | null;
   max_completaciones?: number | null;
   completaciones_actuales?: number | null;
   activo?: boolean | null;
   creado_en?: string | null;
 }
 
-// Interfaz para los datos del perfil de la tabla 'usuarios'
+// Updated UserProfileData interface for Supabase 'usuarios' table
 export interface UserProfileData {
-  id?: number; // Añadimos el ID numérico
+  id?: number;
   auth_user_id?: string;
-  usuario: string;
+  usuario: string; // Corresponds to 'username' in UI
   nombre?: string | null;
   apellido?: string | null;
-  tipo_perfil?: 'usuario' | 'organizacion';
-  avatar_url?: string | null;
-  puntaje_total?: number;
+  // tipo_perfil is removed as esOrganizacion is the source of truth
+  avatar_url?: string | null; // Corresponds to 'profileImage' in UI
+  puntaje_total?: number; // Corresponds to 'totalScore' in UI
+  esOrganizacion?: boolean; // New field from DB
+  // These fields are not in the DB based on the provided schema
+  // age?: number;
+  // user_handle?: string;
+  // is_private?: boolean;
 }
 
-
-// Estado INTERNO del contexto
+// Internal state of the context
 interface UserStateInternal {
-  userId: number | null; // ID numérico de la tabla usuarios
-  username: string | null;
-  nombre?: string | null;
-  apellido?: string | null;
-  profileImageUrl: string | null;
-  profileType: 'common' | 'company' | null;
-  totalScore: number;
+  userId: number | null; // Numeric ID from 'usuarios' table
+  username: string | null; // 'usuario' column
+  nombre: string | null;
+  apellido: string | null;
+  profileImageUrl: string | null; // 'avatar_url' column
+  profileType: 'common' | 'company' | null; // Derived from esOrganizacion
+  isOrganization: boolean | null; // Direct value of 'esOrganizacion'
+  totalScore: number; // 'puntaje_total' column
   loadingProfile: boolean;
   challenges: Reto[];
   loadingChallenges: boolean;
-  completedChallengeIds: Set<number>; // *** NUEVO: IDs de retos completados ***
-  loadingCompletedChallenges: boolean; // *** NUEVO: Estado de carga ***
-  // Campos locales
-  userHandle: string;
-  age: number;
-  isPrivate: boolean;
+  completedChallengeIds: Set<number>;
+  loadingCompletedChallenges: boolean;
+  // Local/UI only state (if still needed, otherwise remove)
+  // userHandle: string;
+  // age: number;
+  // isPrivate: boolean;
 }
 
-// Estado EXPUESTO por el hook useUser
+// Public state exposed by the hook
 interface UserStatePublic {
     userId: number | null;
-    username: string;
-    nombre?: string | null;
-    apellido?: string | null;
+    username: string; // Non-nullable default
+    nombre: string | null;
+    apellido: string | null;
     profileImage: string | null;
-    profileType: 'common' | 'company';
+    profileType: 'common' | 'company'; // Non-nullable default
+    isOrganization: boolean; // Non-nullable default
     totalScore: number;
     loadingProfile: boolean;
     challenges: Reto[];
     loadingChallenges: boolean;
-    completedChallengeIds: Set<number>; // *** NUEVO: Exponer IDs completados ***
-    loadingCompletedChallenges: boolean; // *** NUEVO: Exponer estado de carga ***
-    updateProfile: (updates: Partial<UserProfileData & { age?: number; user_handle?: string; is_private?: boolean }>) => Promise<boolean>;
-    // *** Modificado: Añadir parámetro opcional 'description' ***
+    completedChallengeIds: Set<number>;
+    loadingCompletedChallenges: boolean;
+    // Pass UserProfileData directly, let update function handle mapping
+    updateProfile: (updates: Partial<UserProfileData>) => Promise<boolean>;
     completeChallenge: (reto: Reto, photoUri: string, description?: string | null) => Promise<{ success: boolean; message?: string }>;
-    // Campos locales
-    userHandle: string;
-    age: number;
-    isPrivate: boolean;
+    // Remove local/UI only state if not needed
+    // userHandle: string;
+    // age: number;
+    // isPrivate: boolean;
 }
 
+// Context Definition
 const UserContext = createContext<(UserStateInternal & {
-    updateProfile: (updates: Partial<UserProfileData & { age?: number; user_handle?: string; is_private?: boolean }>) => Promise<boolean>;
-    // *** Modificado: Añadir parámetro opcional 'description' ***
+    // Pass UserProfileData directly
+    updateProfile: (updates: Partial<UserProfileData>) => Promise<boolean>;
     completeChallenge: (reto: Reto, photoUri: string, description?: string | null) => Promise<{ success: boolean; message?: string }>;
 }) | undefined>(undefined);
 
 
+// Initial State
 const INITIAL_STATE: UserStateInternal = {
   userId: null,
   username: null,
   nombre: null,
   apellido: null,
   profileImageUrl: null,
-  profileType: null,
+  profileType: 'common', // Default to common
+  isOrganization: false, // Default to false
   totalScore: 0,
   loadingProfile: true,
   challenges: [],
   loadingChallenges: true,
-  completedChallengeIds: new Set(), // *** NUEVO: Inicializar Set vacío ***
-  loadingCompletedChallenges: true, // *** NUEVO: Iniciar cargando ***
-  userHandle: '@invitado',
-  age: 0,
-  isPrivate: false,
+  completedChallengeIds: new Set(),
+  loadingCompletedChallenges: true,
+  // Remove local/UI only state if not needed
+  // userHandle: '@invitado',
+  // age: 0,
+  // isPrivate: false,
 };
 
-// Mapeos de tipo de perfil (sin cambios)
-const profileTypeToSupabase = (type: 'common' | 'company'): 'usuario' | 'organizacion' => type === 'company' ? 'organizacion' : 'usuario';
-const profileTypeFromSupabase = (type: 'usuario' | 'organizacion' | undefined | null): 'common' | 'company' => type === 'organizacion' ? 'company' : 'common';
+// Mapping from boolean to UI type (moved from configuracion.tsx)
+const profileTypeFromSupabase = (isOrg: boolean | undefined | null): 'common' | 'company' => {
+    return isOrg ? 'company' : 'common';
+}
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { user, session, loading: loadingAuth } = useAuth();
   const [profile, setProfile] = useState<UserStateInternal>(INITIAL_STATE);
 
-  // --- fetchProfile (sin cambios respecto a la versión anterior) ---
+  // Fetch Profile - reads esOrganizacion
   const fetchProfile = useCallback(async () => {
-      // ... código existente ...
       if (!user) {
-        setProfile(prev => ({...INITIAL_STATE, loadingProfile: false, loadingCompletedChallenges: false, loadingChallenges: prev.loadingChallenges })); // Resetear completed
+        setProfile(prev => ({...INITIAL_STATE, loadingProfile: false, loadingCompletedChallenges: false, loadingChallenges: prev.loadingChallenges }));
         return;
       }
       setProfile(prev => ({ ...prev, loadingProfile: true }));
 
       try {
+        // Select the new esOrganizacion column
         const { data, error, status } = await supabase
           .from('usuarios')
-          .select(`id, usuario, nombre, apellido, avatar_url, tipo_perfil, puntaje_total`)
+          .select(`id, usuario, nombre, apellido, avatar_url, puntaje_total, "esOrganizacion"`) // Use quotes for camelCase
           .eq('auth_user_id', user.id)
           .single();
 
         if (error && status !== 406) {
           console.error("Supabase fetch profile error:", error);
           if (status === 406) {
-             console.warn("User profile not found in 'usuarios' table for auth_user_id:", user.id);
+             console.warn("User profile not found for auth_user_id:", user.id);
           } else {
               throw error;
           }
@@ -141,6 +150,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
         const currentUsername = data?.usuario || user.email?.split('@')[0] || 'Invitado';
         const currentUserId = data?.id || null;
+        const currentIsOrg = data?.esOrganizacion ?? false; // Default to false if null/undefined
 
         const profileData = {
           userId: currentUserId,
@@ -148,17 +158,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           nombre: data?.nombre,
           apellido: data?.apellido,
           profileImageUrl: data?.avatar_url || INITIAL_STATE.profileImageUrl,
-          profileType: profileTypeFromSupabase(data?.tipo_perfil),
+          profileType: profileTypeFromSupabase(currentIsOrg), // Derive UI type from boolean
+          isOrganization: currentIsOrg, // Store the boolean value
           totalScore: data?.puntaje_total ?? INITIAL_STATE.totalScore,
           loadingProfile: false,
-          userHandle: profile.userHandle || `@${currentUsername.toLowerCase()}` || INITIAL_STATE.userHandle,
-          age: profile.age || INITIAL_STATE.age,
-          isPrivate: profile.isPrivate === null ? INITIAL_STATE.isPrivate : profile.isPrivate,
+          // Remove local/UI only state updates if not needed
+          // userHandle: profile.userHandle || `@${currentUsername.toLowerCase()}` || INITIAL_STATE.userHandle,
+          // age: profile.age || INITIAL_STATE.age,
+          // isPrivate: profile.isPrivate === null ? INITIAL_STATE.isPrivate : profile.isPrivate,
         };
 
         setProfile(prev => ({ ...prev, ...profileData }));
 
-        if (data) console.log("[UserContext] Profile loaded/merged:", profileData.username, "Numeric ID:", profileData.userId);
+        if (data) console.log("[UserContext] Profile loaded:", profileData.username, "ID:", profileData.userId, "IsOrg:", profileData.isOrganization);
         else console.log("[UserContext] No profile data, using defaults:", profileData.username);
 
       } catch (error) {
@@ -166,11 +178,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setProfile(prev => ({ ...prev, loadingProfile: false }));
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user]); // Removed profile from dependencies to avoid potential loops if local state was still here
 
-  // --- fetchChallenges (sin cambios) ---
+  // --- fetchChallenges (no changes) ---
   const fetchChallenges = useCallback(async () => {
-    // ... código existente ...
      console.log("[UserContext] Fetching challenges...");
     setProfile(prev => ({ ...prev, loadingChallenges: true }));
     try {
@@ -192,9 +203,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // *** NUEVA FUNCIÓN: fetchCompletedChallenges ***
+  // --- fetchCompletedChallenges (no changes) ---
   const fetchCompletedChallenges = useCallback(async () => {
-      const numericUserId = profile.userId; // Usar el ID numérico del estado
+      const numericUserId = profile.userId;
       if (!user || !numericUserId) {
           setProfile(prev => ({ ...prev, completedChallengeIds: new Set(), loadingCompletedChallenges: false }));
           return;
@@ -204,8 +215,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       try {
           const { data, error } = await supabase
               .from('retos_completados')
-              .select('reto_id') // Solo necesitamos el ID del reto
-              .eq('usuario_id', numericUserId); // Filtrar por ID numérico del usuario
+              .select('reto_id')
+              .eq('usuario_id', numericUserId);
 
           if (error) {
               console.error("[UserContext] Supabase completed challenges fetch error:", error);
@@ -220,74 +231,80 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           console.error('[UserContext] Error fetching completed challenges:', error);
           setProfile(prev => ({ ...prev, completedChallengeIds: new Set(), loadingCompletedChallenges: false }));
       }
-  }, [user, profile.userId]); // Depende del UUID de auth y del ID numérico del perfil
+  }, [user, profile.userId]);
 
 
-  // --- useEffect para cargar datos (ahora también llama a fetchCompletedChallenges) ---
+  // --- useEffect to load data (no changes) ---
   useEffect(() => {
      if (!loadingAuth) {
        if (session && user) {
-         // Carga el perfil primero para obtener el userId numérico
          fetchProfile().then(() => {
-            // Una vez que tenemos el perfil (y userId), cargamos los completados
             fetchCompletedChallenges();
          });
-         fetchChallenges(); // Los retos generales se pueden cargar en paralelo
+         fetchChallenges();
        } else {
           setProfile(prev => ({...INITIAL_STATE, loadingProfile: false, loadingChallenges: false, loadingCompletedChallenges: false }));
        }
      }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, user, loadingAuth, fetchProfile, fetchChallenges, fetchCompletedChallenges]); // Añadir fetchCompletedChallenges
+  }, [session, user, loadingAuth, fetchProfile, fetchChallenges, fetchCompletedChallenges]);
 
-  // --- updateProfileInSupabase (sin cambios) ---
-  const updateProfileInSupabase = async (updates: Partial<UserProfileData & { age?: number; user_handle?: string; is_private?: boolean }>): Promise<boolean> => {
-      // ... código existente ...
+  // --- updateProfileInSupabase - accepts UserProfileData, handles esOrganizacion ---
+  const updateProfileInSupabase = async (updates: Partial<UserProfileData>): Promise<boolean> => {
       if (!user) {
        console.error("[UserContext] No user logged in to update profile.");
        return false;
      }
-     // ... resto del código sin cambios ...
+
+     // Define columns that exist in the Supabase 'usuarios' table based on UserProfileData
+     const dbColumns: (keyof UserProfileData)[] = [
+        'usuario',
+        'nombre',
+        'apellido',
+        'avatar_url',
+        'puntaje_total',
+        'esOrganizacion' // Add the new boolean field
+     ];
+
      const updatesForSupabase: Partial<UserProfileData> = {};
-     const dbColumns: (keyof Omit<UserProfileData, 'id'>)[] = ['usuario', 'nombre', 'apellido', 'tipo_perfil', 'avatar_url', 'puntaje_total'];
      let hasDbUpdates = false;
 
      for (const key in updates) {
          const typedKey = key as keyof UserProfileData;
-         // @ts-ignore Check if key is in dbColumns
+         // Check if the key from updates is a valid DB column
          if (dbColumns.includes(typedKey)) {
-             if (typedKey === 'tipo_perfil') {
-                 // @ts-ignore
-                 updatesForSupabase[typedKey] = profileTypeToSupabase(updates[typedKey]);
-             } else {
-                 updatesForSupabase[typedKey] = updates[typedKey];
-             }
+             updatesForSupabase[typedKey] = updates[typedKey];
              hasDbUpdates = true;
+         } else {
+             console.warn(`[UserContext] updateProfile called with invalid key: ${key}`);
          }
      }
 
-     const localUpdatesToApply: Partial<UserStateInternal> = {};
-     // @ts-ignore
-     if (updates.age !== undefined) localUpdatesToApply.age = updates.age;
-     // @ts-ignore
-     if (updates.user_handle !== undefined) localUpdatesToApply.userHandle = updates.user_handle;
-     // @ts-ignore
-     if (updates.is_private !== undefined) localUpdatesToApply.isPrivate = updates.is_private;
-
-      if (Object.keys(localUpdatesToApply).length > 0) {
-        setProfile(prev => ({ ...prev, ...localUpdatesToApply }));
-        console.log("[UserContext] Local state updated immediately for:", Object.keys(localUpdatesToApply).join(', '));
-      }
+     // Remove local state updates if they are not needed anymore
+     // const localUpdatesToApply: Partial<UserStateInternal> = {};
+     // if (updates.age !== undefined) localUpdatesToApply.age = updates.age;
+     // ... other local fields ...
+     // if (Object.keys(localUpdatesToApply).length > 0) {
+     //   setProfile(prev => ({ ...prev, ...localUpdatesToApply }));
+     // }
 
      if (hasDbUpdates) {
         setProfile(prev => ({ ...prev, loadingProfile: true }));
         try {
-            const { auth_user_id, ...updatePayload } = updatesForSupabase;
+            // Remove auth_user_id and id if present, as they are not updatable this way
+            const { auth_user_id, id, ...updatePayload } = updatesForSupabase;
 
-            console.log("[UserContext] Attempting to update profile in Supabase with data:", updatePayload);
+             // Ensure esOrganizacion is quoted if needed by Supabase client (usually not needed for column names)
+            // const finalPayload = { ...updatePayload };
+            // if (finalPayload.esOrganizacion !== undefined) {
+            //     finalPayload['"esOrganizacion"'] = finalPayload.esOrganizacion;
+            //     delete finalPayload.esOrganizacion;
+            // }
+
+            console.log("[UserContext] Attempting to update profile in Supabase:", updatePayload);
             const { error } = await supabase
                  .from('usuarios')
-                 .update(updatePayload)
+                 .update(updatePayload) // Use the filtered payload
                  .eq('auth_user_id', user.id);
 
             if (error) {
@@ -295,14 +312,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               throw error;
             }
              console.log("[UserContext] Profile updated successfully in Supabase.");
+
+             // Update local state after successful DB update
+             const newStateChanges: Partial<UserStateInternal> = {};
+             if (updatesForSupabase.usuario !== undefined) newStateChanges.username = updatesForSupabase.usuario;
+             if (updatesForSupabase.nombre !== undefined) newStateChanges.nombre = updatesForSupabase.nombre;
+             if (updatesForSupabase.apellido !== undefined) newStateChanges.apellido = updatesForSupabase.apellido;
+             if (updatesForSupabase.avatar_url !== undefined) newStateChanges.profileImageUrl = updatesForSupabase.avatar_url;
+             if (updatesForSupabase.puntaje_total !== undefined) newStateChanges.totalScore = updatesForSupabase.puntaje_total;
+             if (updatesForSupabase.esOrganizacion !== undefined) {
+                 newStateChanges.isOrganization = updatesForSupabase.esOrganizacion;
+                 newStateChanges.profileType = profileTypeFromSupabase(updatesForSupabase.esOrganizacion);
+             }
+
              setProfile(prev => ({
                 ...prev,
-                username: updatesForSupabase.usuario !== undefined ? updatesForSupabase.usuario : prev.username,
-                nombre: updatesForSupabase.nombre !== undefined ? updatesForSupabase.nombre : prev.nombre,
-                apellido: updatesForSupabase.apellido !== undefined ? updatesForSupabase.apellido : prev.apellido,
-                profileImageUrl: updatesForSupabase.avatar_url !== undefined ? updatesForSupabase.avatar_url : prev.profileImageUrl,
-                profileType: updatesForSupabase.tipo_perfil !== undefined ? profileTypeFromSupabase(updatesForSupabase.tipo_perfil) : prev.profileType,
-                totalScore: updatesForSupabase.puntaje_total !== undefined ? updatesForSupabase.puntaje_total : prev.totalScore,
+                ...newStateChanges,
                 loadingProfile: false
              }));
 
@@ -312,6 +337,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             return false;
         }
      } else {
+         // If only local state was updated (and no DB updates), ensure loading is false
          if (profile.loadingProfile) {
             setProfile(prev => ({...prev, loadingProfile: false}));
          }
@@ -319,27 +345,24 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       return true;
   };
 
-  // --- completeChallenge ---
-  // Modificado para checkear si ya está completado, guardar hora y descripción
+  // --- completeChallenge (no changes) ---
   const completeChallenge = async (
       reto: Reto,
       photoUri: string,
-      description?: string | null // *** Nuevo parámetro opcional ***
-  ): Promise<{ success: boolean; message?: string }> => { // *** Devuelve objeto con mensaje ***
+      description?: string | null
+  ): Promise<{ success: boolean; message?: string }> => {
     const numericUserId = profile.userId;
 
     if (!user || !numericUserId) {
-      console.error("[UserContext] No user logged in or numeric user ID not found to complete challenge.");
+      console.error("[UserContext] No user/ID to complete challenge.");
       return { success: false, message: "Usuario no autenticado." };
     }
-
-    // *** NUEVO: Verificar si el reto ya está completado (usando el estado local) ***
     if (profile.completedChallengeIds.has(reto.id)) {
-        console.log(`[UserContext] Reto ${reto.id} ya completado por usuario ${numericUserId}. Abortando.`);
-        return { success: false, message: "Ya has completado este reto anteriormente." };
+        console.log(`[UserContext] Reto ${reto.id} already completed.`);
+        return { success: false, message: "Ya has completado este reto." };
     }
 
-    // *** Opcional: Verificar también contra la BD por si el estado local no está sincronizado ***
+    // Optional: Double check against DB
     /*
     const { data: existingCompletion, error: checkError } = await supabase
         .from('retos_completados')
@@ -347,84 +370,52 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         .eq('usuario_id', numericUserId)
         .eq('reto_id', reto.id)
         .limit(1);
-
-    if (checkError) {
-        console.error("[UserContext] Error checking existing completion:", checkError);
-        return { success: false, message: "Error al verificar el estado del reto." };
-    }
+    if (checkError) return { success: false, message: "Error al verificar." };
     if (existingCompletion && existingCompletion.length > 0) {
-        console.log(`[UserContext] Reto ${reto.id} ya completado por usuario ${numericUserId} (verificado en BD). Abortando.`);
-        // Sincronizar estado local si hay discrepancia
         if (!profile.completedChallengeIds.has(reto.id)) {
              setProfile(prev => ({...prev, completedChallengeIds: new Set(prev.completedChallengeIds).add(reto.id)}));
         }
-        return { success: false, message: "Ya has completado este reto anteriormente." };
+        return { success: false, message: "Ya has completado este reto." };
     }
     */
 
     try {
-      console.log(`[UserContext] Iniciando completado del reto ${reto.id} por usuario ${user.id} (numeric: ${numericUserId})`);
-
-      // 1. Subir la imagen a ImgBB (sin cambios)
+      console.log(`[UserContext] Completing challenge ${reto.id} by user ${numericUserId}`);
       const photoUrl = await uploadImage(photoUri);
-      if (!photoUrl) {
-        throw new Error('Falló la subida de la imagen a ImgBB.');
-      }
-      console.log(`[UserContext] Imagen subida a ImgBB: ${photoUrl}`);
+      if (!photoUrl) throw new Error('Falló la subida de la imagen.');
+      console.log(`[UserContext] Image uploaded: ${photoUrl}`);
 
-      // 2. Insertar en retos_completados (añadiendo hora_completado)
-      console.log(`[UserContext] Insertando en retos_completados (usuario_id: ${numericUserId})...`);
-      // *** Obtenemos la hora actual en formato HH:MM:SS ***
       const now = new Date();
       const horaCompletado = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-      console.log(`[UserContext] Hora de completado: ${horaCompletado}`);
 
       const { data: completedData, error: completedError } = await supabase
         .from('retos_completados')
         .insert({
             usuario_id: numericUserId,
             reto_id: reto.id,
-            hora_completado: horaCompletado // *** Añadido ***
+            hora_completado: horaCompletado
         })
         .select('id')
         .single();
-
-      if (completedError || !completedData) {
-        console.error("[UserContext] Error insertando en retos_completados:", completedError);
-        throw completedError || new Error('No se recibió ID de reto_completado.');
-      }
+      if (completedError || !completedData) throw completedError || new Error('No se recibió ID de reto_completado.');
       const retoCompletadoId = completedData.id;
-      console.log(`[UserContext] Registro en retos_completados creado con ID: ${retoCompletadoId}`);
 
-      // 3. Insertar en fotos_participaciones (añadiendo descripción)
-      console.log(`[UserContext] Insertando en fotos_participaciones (usuario_id: ${numericUserId})...`);
       const { error: photoError } = await supabase
         .from('fotos_participaciones')
         .insert({
           usuario_id: numericUserId,
           reto_completado_id: retoCompletadoId,
           url_foto: photoUrl,
-          descripcion: description || null // *** Añadido (usa null si es undefined o vacío) ***
+          descripcion: description || null
         });
+      if (photoError) throw photoError;
 
-      if (photoError) {
-        console.error("[UserContext] Error insertando en fotos_participaciones:", photoError);
-        throw photoError;
-      }
-      console.log(`[UserContext] Registro en fotos_participaciones creado.`);
-
-      // 4. Actualizar puntaje del usuario (sin cambios)
-      console.log(`[UserContext] Actualizando puntaje del usuario (id: ${numericUserId})...`);
        const { data: userData, error: userFetchError } = await supabase
            .from('usuarios')
            .select('puntaje_total')
            .eq('id', numericUserId)
            .single();
-
-       if (userFetchError && userFetchError.code !== 'PGRST116') {
-           console.error("[UserContext] Error fetching current score:", userFetchError);
-           throw userFetchError;
-       }
+       if (userFetchError && userFetchError.code !== 'PGRST116') throw userFetchError;
        const currentScore = userData?.puntaje_total || 0;
        const newScore = currentScore + reto.puntos_otorgados;
 
@@ -432,31 +423,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
            .from('usuarios')
            .update({ puntaje_total: newScore })
            .eq('id', numericUserId);
+       if (scoreError) throw scoreError;
 
-       if (scoreError) {
-           console.error("[UserContext] Error updating score:", scoreError);
-           throw scoreError;
-       }
-       console.log(`[UserContext] Puntaje actualizado a: ${newScore}`);
-       // Actualizar estado local
        setProfile(prev => ({
            ...prev,
            totalScore: newScore,
-           completedChallengeIds: new Set(prev.completedChallengeIds).add(reto.id) // *** Añadir ID a completados ***
+           completedChallengeIds: new Set(prev.completedChallengeIds).add(reto.id)
        }));
 
-
-      // 5. Opcional: Actualizar completaciones_actuales en 'retos' (sin cambios)
-       console.log(`[UserContext] Actualizando completaciones del reto...`);
         const { data: retoData, error: retoFetchError } = await supabase
             .from('retos')
             .select('completaciones_actuales, max_completaciones')
             .eq('id', reto.id)
             .single();
-
-        if (retoFetchError) {
-             console.error("[UserContext] Error fetching challenge completions:", retoFetchError);
-        } else if (retoData) {
+        if (retoFetchError) console.error("[UserContext] Error fetching challenge completions:", retoFetchError);
+        else if (retoData) {
             const currentCompletions = retoData.completaciones_actuales || 0;
             if (retoData.max_completaciones == null || currentCompletions < retoData.max_completaciones) {
                  const newCompletions = currentCompletions + 1;
@@ -464,11 +445,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                      .from('retos')
                      .update({ completaciones_actuales: newCompletions })
                      .eq('id', reto.id);
-                 if (completionsError) {
-                      console.error("[UserContext] Error updating challenge completions:", completionsError);
-                 } else {
-                     console.log(`[UserContext] Completaciones del reto actualizadas a: ${newCompletions}`);
-                     // Actualizar estado local de 'challenges' si es necesario
+                 if (completionsError) console.error("[UserContext] Error updating challenge completions:", completionsError);
+                 else {
                      setProfile(prev => ({
                          ...prev,
                          challenges: prev.challenges.map(c =>
@@ -476,18 +454,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                          )
                      }));
                  }
-            } else {
-                 console.log("[UserContext] Límite de completaciones alcanzado.");
             }
         }
-
-      console.log(`[UserContext] Reto ${reto.id} completado exitosamente.`);
+      console.log(`[UserContext] Challenge ${reto.id} completed successfully.`);
       return { success: true };
-
     } catch (error: any) {
-      console.error(`[UserContext] Error al completar el reto ${reto.id}:`, error);
-      // Devuelve el mensaje de error para mostrarlo en la UI si es útil
-      return { success: false, message: error.message || "Error desconocido al completar el reto." };
+      console.error(`[UserContext] Error completing challenge ${reto.id}:`, error);
+      return { success: false, message: error.message || "Error desconocido." };
     }
   };
 
@@ -501,7 +474,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   return <UserContext.Provider value={internalValue}>{children}</UserContext.Provider>;
 };
 
-// Hook PÚBLICO
+// Hook PÚBLICO - exposes isOrganization
 export const useUser = (): UserStatePublic => {
   const context = useContext(UserContext);
   if (context === undefined) {
@@ -514,18 +487,18 @@ export const useUser = (): UserStatePublic => {
       apellido: context.apellido,
       profileImage: context.profileImageUrl,
       profileType: context.profileType || 'common',
+      isOrganization: context.isOrganization ?? false, // Provide default boolean
       totalScore: context.totalScore,
       loadingProfile: context.loadingProfile,
       challenges: context.challenges,
       loadingChallenges: context.loadingChallenges,
-      completedChallengeIds: context.completedChallengeIds, // *** Exponer Set ***
-      loadingCompletedChallenges: context.loadingCompletedChallenges, // *** Exponer estado carga ***
+      completedChallengeIds: context.completedChallengeIds,
+      loadingCompletedChallenges: context.loadingCompletedChallenges,
       updateProfile: context.updateProfile,
       completeChallenge: context.completeChallenge,
-      // Locales
-      userHandle: context.userHandle,
-      age: context.age,
-      isPrivate: context.isPrivate,
+      // Remove local state if not needed
+      // userHandle: context.userHandle,
+      // age: context.age,
+      // isPrivate: context.isPrivate,
   };
 };
-
