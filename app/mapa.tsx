@@ -5,60 +5,76 @@ import * as Location from "expo-location";
 import MapView, { Marker, Region } from "react-native-maps";
 // *** Importar TextInput de react-native-paper ***
 import { Appbar, Button, Card, Dialog, Portal, Text, TextInput, useTheme, IconButton } from "react-native-paper";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router"; // --- IMPORTAR useLocalSearchParams ---
 import { useUser, Reto } from '../context/UserContext';
 import { useAuth } from "../context/AuthContext";
 
 export default function MapaScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const params = useLocalSearchParams<{ lat: string, lon: string, title: string }>(); // --- OBTENER PARÁMETROS ---
+
   const [region, setRegion] = useState<Region | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [selectedChallenge, setSelectedChallenge] = useState<Reto | null>(null);
-  // *** Añadir estado para la descripción ***
   const [description, setDescription] = useState('');
-  // *** Obtener completedChallengeIds y loadingCompletedChallenges ***
   const { challenges, loadingChallenges, completeChallenge, completedChallengeIds, loadingCompletedChallenges } = useUser();
   const { user } = useAuth();
   const [isCompleting, setIsCompleting] = useState(false);
 
   useEffect(() => {
     (async () => {
-        // ... (lógica de permisos y obtención de ubicación sin cambios) ...
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permiso requerido", "Necesitamos tu ubicación para mostrarte puntos cercanos.");
-        setRegion({
-          latitude: -31.394, // Concordia, Entre Ríos (default)
-          longitude: -58.018,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        });
-        return;
-      }
-      try {
-        const loc = await Location.getCurrentPositionAsync({});
-        setRegion({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        });
-      } catch (error) {
-         console.error("Error getting current location:", error);
-         Alert.alert("Error de Ubicación", "No se pudo obtener tu ubicación actual. Mostrando ubicación por defecto.");
-          setRegion({ // Fallback a Concordia
-            latitude: -31.394,
+      // --- LÓGICA DE REGIÓN INICIAL MODIFICADA ---
+      let initialRegion: Region;
+      const { lat, lon } = params;
+
+      if (lat && lon) {
+        // Si se pasan parámetros, centrar en ellos
+        console.log(`[MapaScreen] Centrando en cupón: ${lat}, ${lon}`);
+        initialRegion = {
+          latitude: parseFloat(lat),
+          longitude: parseFloat(lon),
+          latitudeDelta: 0.01, // Zoom cercano
+          longitudeDelta: 0.01,
+        };
+      } else {
+        // Si no hay parámetros, pedir ubicación del usuario
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permiso requerido", "Necesitamos tu ubicación para mostrarte puntos cercanos.");
+          initialRegion = {
+            latitude: -31.394, // Concordia (default)
             longitude: -58.018,
             latitudeDelta: 0.02,
             longitudeDelta: 0.02,
-          });
+          };
+        } else {
+          try {
+            const loc = await Location.getCurrentPositionAsync({});
+            initialRegion = {
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            };
+          } catch (error) {
+            console.error("Error getting current location:", error);
+            Alert.alert("Error de Ubicación", "No se pudo obtener tu ubicación actual. Mostrando ubicación por defecto.");
+            initialRegion = { // Fallback a Concordia
+              latitude: -31.394,
+              longitude: -58.018,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            };
+          }
+        }
       }
+      setRegion(initialRegion);
+      // --- FIN DE LÓGICA DE REGIÓN ---
     })();
-  }, []);
+  }, [params]); // Depender de params para que reaccione si cambian
 
   const openCamera = async () => {
-    // ... (lógica de cámara sin cambios) ...
      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
      if (!cameraPermission.granted) {
        Alert.alert("Cámara", "Necesitamos permisos de cámara para subir evidencia.");
@@ -89,7 +105,6 @@ export default function MapaScreen() {
     setIsCompleting(true);
     try {
         console.log(`[MapaScreen] Intentando completar reto ${selectedChallenge.id} con foto ${photo} y descripción "${description}"`);
-        // *** Pasar la descripción a completeChallenge ***
         const result = await completeChallenge(selectedChallenge, photo, description);
 
         if (result.success) {
@@ -101,7 +116,6 @@ export default function MapaScreen() {
             setSelectedChallenge(null);
             setDescription(''); // Limpiar descripción
         } else {
-            // *** Mostrar mensaje de error del contexto si existe ***
             Alert.alert("Error al completar", result.message || "No se pudo completar el reto. Revisa tu conexión e inténtalo de nuevo.");
         }
     } catch (error: any) {
@@ -113,7 +127,6 @@ export default function MapaScreen() {
   };
 
    const getPinColor = (challenge: Reto) => {
-     // *** NUEVO: Usar gris si ya está completado ***
      if (completedChallengeIds.has(challenge.id)) {
         return theme.colors.backdrop; // Gris o un color que indique completado
      }
@@ -122,7 +135,6 @@ export default function MapaScreen() {
      return theme.colors.secondary;
    };
 
-  // *** Mostrar carga si aún no se cargaron los retos completados ***
   if (!region || loadingChallenges || loadingCompletedChallenges) {
     return (
       <View style={styles.loadingContainer}>
@@ -143,6 +155,7 @@ export default function MapaScreen() {
         <Appbar.Content title="Mapa Interactivo" titleStyle={{ color: '#fff' }}/>
       </Appbar.Header>
       <MapView style={{ flex: 1 }} initialRegion={region}>
+        {/* Marcadores de Retos */}
         {challengesWithLocation.map((challenge) => (
           <Marker
             key={challenge.id}
@@ -154,7 +167,6 @@ export default function MapaScreen() {
                 : `${challenge.puntos_otorgados} pts`
             }
             pinColor={getPinColor(challenge)}
-            // *** Deshabilitar onPress si ya está completado ***
             onPress={() => {
                 if (!completedChallengeIds.has(challenge.id)) {
                     setSelectedChallenge(challenge);
@@ -166,7 +178,21 @@ export default function MapaScreen() {
             }}
           />
         ))}
-         <Marker coordinate={region} pinColor="blue" title="Tu Ubicación" />
+
+        {/* Marcador de Ubicación del Usuario (si no se pasó cupón) */}
+         {!params.lat && (
+            <Marker coordinate={region} pinColor="blue" title="Tu Ubicación" />
+         )}
+
+        {/* --- CAMBIO: Marcador especial para el cupón (si se pasó) --- */}
+        {params.lat && params.lon && (
+          <Marker
+            coordinate={{ latitude: parseFloat(params.lat as string), longitude: parseFloat(params.lon as string) }}
+            pinColor="gold" // Color dorado para destacarlo
+            title={params.title as string || 'Ubicación del Cupón'}
+            zIndex={10} // Asegurar que esté por encima de otros
+          />
+        )}
       </MapView>
 
       {selectedChallenge && !photo && (
@@ -201,7 +227,6 @@ export default function MapaScreen() {
             <Dialog.Title>Confirmar evidencia</Dialog.Title>
             <Dialog.Content>
                 {photo && <Image source={{ uri: photo }} style={styles.modalImage} />}
-                {/* *** Añadir TextInput para descripción *** */}
                 <TextInput
                     label="Añadir comentario (opcional)"
                     value={description}
@@ -253,7 +278,6 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     marginBottom: 10,
   },
-  // *** Estilo para el TextInput de descripción ***
   descriptionInput: {
       marginTop: 10,
       marginBottom: 15,
@@ -270,4 +294,3 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   }
 });
-

@@ -23,8 +23,10 @@ interface AvailableCouponData {
   fecha_fin: string | null;
   max_canjeos: number | null;
   canjeos_actuales: number | null;
-  // Added fields to check availability thoroughly
   disponible: boolean;
+  // --- CAMPOS AÑADIDOS ---
+  latitud: number | null;
+  longitud: number | null;
 }
 
 // Interfaz ampliada para mis cupones, incluyendo token_qr y cupon_id
@@ -76,16 +78,14 @@ export default function PremiosScreen() {
   const [redeemedCouponInfo, setRedeemedCouponInfo] = useState<RedeemedCouponInfo | null>(null);
 
   const fetchAvailableRewards = useCallback(async () => {
-    // ... (fetch logic remains the same)
     console.log("[PremiosScreen] Fetching available rewards...");
     setLoadingRewards(true);
     setError(null);
     try {
-      // Select 'disponible' as well
+      // --- CAMBIO: Añadir latitud y longitud al select ---
       const { data, error: dbError } = await supabase
         .from('cupones')
-        .select('id, titulo, descripcion, puntos_necesarios, imagen_url, fecha_fin, max_canjeos, canjeos_actuales, disponible')
-        // We filter by disponible=true here, but double-check in redeem logic
+        .select('id, titulo, descripcion, puntos_necesarios, imagen_url, fecha_fin, max_canjeos, canjeos_actuales, disponible, latitud, longitud')
         .eq('disponible', true)
         .order('puntos_necesarios', { ascending: true });
 
@@ -101,12 +101,13 @@ export default function PremiosScreen() {
         category: 'General', // Placeholder
         validUntil: item.fecha_fin ? new Date(item.fecha_fin).toLocaleDateString() : 'Indefinido',
         locations: 'Varias', // Placeholder
-        // Calculate availability based on fetched data
         availability: {
-          // If max_canjeos is null or 0, consider it unlimited (positive number)
           current: (item.max_canjeos === null || item.max_canjeos === 0) ? 999 : item.max_canjeos - (item.canjeos_actuales ?? 0),
           total: item.max_canjeos ?? 0,
         },
+        // --- CAMBIO: Pasar latitud y longitud ---
+        latitud: item.latitud,
+        longitud: item.longitud,
       })) || [];
 
       setAvailableRewards(mappedRewards);
@@ -115,8 +116,6 @@ export default function PremiosScreen() {
     } catch (catchError: any) {
       console.error("[PremiosScreen] Error fetching available rewards:", catchError);
       setError("No se pudieron cargar los premios disponibles.");
-      // Avoid Alert here, let the UI show the error text
-      // Alert.alert("Error", "No se pudieron cargar los premios disponibles.");
     } finally {
       setLoadingRewards(false);
     }
@@ -632,4 +631,3 @@ const styles = StyleSheet.create({
     alignSelf: 'center', // Center modal horizontally
   }
 });
-

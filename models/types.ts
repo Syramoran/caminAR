@@ -31,6 +31,9 @@ export interface Reward {
     current: number;
     total: number;
   };
+  // --- CAMPOS AÑADIDOS ---
+  latitud?: number | null;
+  longitud?: number | null;
 }
 
 // Estructura para los Cupones que el usuario ya tiene (necesaria para la pestaña "Mis Cupones")
@@ -54,4 +57,3 @@ export interface MapPoint {
   challengeIds?: string[];
   kind: "recycle_bin" | "event" | "poi";
 }
-
