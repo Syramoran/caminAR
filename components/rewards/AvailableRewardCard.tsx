@@ -1,14 +1,16 @@
 import React from 'react';
-import { StyleSheet, View, Alert } from 'react-native';
+import { StyleSheet, View, Alert, TouchableOpacity } from 'react-native';
 // Add Button import
 import { Card, Text, Chip, useTheme, Button } from 'react-native-paper';
 import { Reward } from '../../models/types';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useUser } from '../../context/UserContext'; // Import useUser to check points
+import { useRouter } from 'expo-router'; // --- IMPORTADO ---
 
 // Add onRedeem and isAlreadyRedeemed props
 export default function AvailableRewardCard({ r, onRedeem, isAlreadyRedeemed }: { r: Reward, onRedeem: (reward: Reward) => void, isAlreadyRedeemed: boolean }) {
   const theme = useTheme();
+  const router = useRouter(); // --- AÑADIDO ---
   const { totalScore } = useUser(); // Get user's points
 
   const canAfford = totalScore >= r.pointsRequired;
@@ -63,10 +65,26 @@ export default function AvailableRewardCard({ r, onRedeem, isAlreadyRedeemed }: 
           <Icon name="calendar-check" size={16} color="#666" />
           <Text style={styles.infoText}>Válido hasta {r.validUntil}</Text>
         </View>
-        <View style={styles.infoRow}>
-          <Icon name="map-marker" size={16} color="#666" />
-          <Text style={styles.infoText}>{r.locations}</Text>
-        </View>
+
+        {/* --- CAMBIO: Añadido link al mapa si hay lat/lon --- */}
+        {r.latitud && r.longitud ? (
+          <TouchableOpacity
+            style={styles.infoRow}
+            onPress={() => router.push({
+              pathname: '/mapa',
+              params: { lat: r.latitud, lon: r.longitud, title: r.title }
+            })}
+          >
+            <Icon name="map-marker" size={16} color={theme.colors.primary} />
+            <Text style={[styles.infoText, { color: theme.colors.primary, textDecorationLine: 'underline' }]}>Ver ubicación</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.infoRow}>
+            <Icon name="map-marker" size={16} color="#666" />
+            <Text style={styles.infoText}>{r.locations}</Text>
+          </View>
+        )}
+
         {/* Only show availability if it's limited (total > 0) */}
         {r.availability.total > 0 && (
             <View style={styles.availability}>
@@ -140,4 +158,3 @@ const styles = StyleSheet.create({
     // Style for the button text if needed
   },
 });
-
