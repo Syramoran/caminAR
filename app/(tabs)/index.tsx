@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View, StatusBar, Alert } from 'react-native';
+import { ScrollView, StyleSheet, View, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme, ActivityIndicator, Text } from 'react-native-paper';
 import * as Location from 'expo-location';
@@ -7,7 +7,7 @@ import { HomeHeader } from '../../components/home/HomeHeader';
 import WeatherCard from '../../components/home/WeatherCard';
 import MapPreview from '../../components/home/MapPreview';
 import EcologicalRoutes from '../../components/home/EcologicalRoutes';
-import ActiveChallenges from '../../components/home/ActiveChallenges';
+// Se eliminó la importación de ActiveChallenges
 
 // Interfaz para los datos que *realmente* usaremos
 interface WeatherData {
@@ -30,7 +30,6 @@ interface OpenMeteoResponse {
 }
 
 // Función para obtener la descripción del clima basada en el código WMO
-// Referencia: https://open-meteo.com/en/docs#weathervariables
 const getWeatherDescription = (code: number): string => {
   const descriptions: { [key: number]: string } = {
     0: 'Despejado',
@@ -73,8 +72,6 @@ export default function IndexScreen() {
   const [loadingWeather, setLoadingWeather] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Ya no necesitamos API Key para Open-Meteo básico
-
   useEffect(() => {
     const currentHour = new Date().getHours();
     setIsNight(currentHour < 6 || currentHour >= 19);
@@ -107,7 +104,6 @@ export default function IndexScreen() {
         const response = await fetch(apiUrl);
 
         if (!response.ok) {
-           // Si la respuesta no es OK, intenta leer el cuerpo para el mensaje
            let errorText = `Error ${response.status}: No se pudo obtener el clima`;
            try {
               const errorData = await response.json();
@@ -115,7 +111,6 @@ export default function IndexScreen() {
                 errorText += ` - ${errorData.reason}`;
               }
            } catch (jsonError) {
-              // Si no se puede parsear el JSON, usa el texto de estado
               errorText = `Error ${response.status}: ${response.statusText}`;
            }
            throw new Error(errorText);
@@ -124,13 +119,12 @@ export default function IndexScreen() {
         const data: OpenMeteoResponse = await response.json();
         console.log("LOG: Datos del clima recibidos de Open-Meteo:", data);
 
-        // Verifica que los datos necesarios existan
         if (data.current && data.daily && data.daily.temperature_2m_max && data.daily.temperature_2m_min) {
           const newWeatherData: WeatherData = {
             temp: Math.round(data.current.temperature_2m).toString(),
-            condition: getWeatherDescription(data.current.weather_code), // Usa la función de mapeo
-            tempMin: Math.round(data.daily.temperature_2m_min[0]).toString(), // Toma el primer día (hoy)
-            tempMax: Math.round(data.daily.temperature_2m_max[0]).toString(), // Toma el primer día (hoy)
+            condition: getWeatherDescription(data.current.weather_code),
+            tempMin: Math.round(data.daily.temperature_2m_min[0]).toString(),
+            tempMax: Math.round(data.daily.temperature_2m_max[0]).toString(),
           };
           setWeather(newWeatherData);
         } else {
@@ -178,9 +172,14 @@ export default function IndexScreen() {
             />
           )}
           {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+
+          {/* Mapa Interactivo */}
           <MapPreview />
+
+          {/* Rutas Ecológicas / Retos Disponibles */}
           <EcologicalRoutes />
-          <ActiveChallenges />
+
+          {/* Sección "ActiveChallenges" eliminada */}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -205,4 +204,3 @@ const styles = StyleSheet.create({
       fontSize: 14,
   }
 });
-
