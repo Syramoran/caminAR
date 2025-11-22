@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { Card, Text, useTheme, Icon } from 'react-native-paper';
 import { IconSource } from 'react-native-paper/lib/typescript/components/Icon';
 
@@ -7,13 +7,14 @@ type Props = {
   icon: IconSource;
   value: string | number;
   label: string;
+  style?: StyleProp<ViewStyle>; // Añadimos soporte para estilos externos
 };
 
-export const StatGridItem = ({ icon, value, label }: Props) => {
+export const StatGridItem = ({ icon, value, label, style }: Props) => {
   const theme = useTheme();
 
   return (
-    <Card style={styles.card} mode="outlined">
+    <Card style={[styles.card, style]} mode="outlined">
       <Card.Content style={styles.content}>
         <Icon source={icon} size={32} color={theme.colors.primary} />
         <Text variant="headlineSmall" style={styles.valueText}>
@@ -29,10 +30,10 @@ export const StatGridItem = ({ icon, value, label }: Props) => {
 
 const styles = StyleSheet.create({
   card: {
-    // Cada tarjeta ocupa casi la mitad del espacio para crear una grilla 2x2
-    width: '48%',
+    // Eliminamos el width: '48%' fijo para que sea flexible
     marginBottom: 10,
     backgroundColor: 'white',
+    flex: 1, // Permite que la tarjeta llene el espacio del contenedor
   },
   content: {
     alignItems: 'center',

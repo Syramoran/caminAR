@@ -1,63 +1,95 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Avatar, Text, IconButton, ProgressBar, useTheme, ActivityIndicator } from 'react-native-paper'; // Importa ActivityIndicator
-import { Link } from 'expo-router';
-import { useUser } from '../../context/UserContext'; // Verifica que la ruta sea correcta
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Avatar, Text, IconButton, ProgressBar, useTheme } from 'react-native-paper';
+import { Link, useRouter } from 'expo-router';
+import { useUser } from '../../context/UserContext';
 
-export const ProfileHeader = () => {
+// Props opcionales para cuando vemos el perfil de otro
+interface ProfileHeaderProps {
+  customUser?: {
+    username: string;
+    profileImage: string | null;
+    totalScore: number;
+  };
+  isOwnProfile?: boolean;
+}
+
+export const ProfileHeader = ({ customUser, isOwnProfile = true }: ProfileHeaderProps) => {
   const theme = useTheme();
-  // 1. Obtenemos la información relevante del contexto, incluyendo el estado de carga
-  const { profileImage, username, totalScore, loadingProfile } = useUser();
+  const router = useRouter();
 
-  // Define un puntaje objetivo para el nivel actual o próximo (puedes ajustar esto)
+  // Datos del usuario logueado (contexto)
+  const { profileImage: contextImage, username: contextName, totalScore: contextScore, loadingProfile } = useUser();
+
+  // Decidir qué datos mostrar
+  const displayImage = customUser ? customUser.profileImage : contextImage;
+  const displayName = customUser ? customUser.username : contextName;
+  const displayScore = customUser ? customUser.totalScore : contextScore;
+
+  // Lógica de nivel visual
   const scoreNeededForNextLevel = 1500;
-  const progress = loadingProfile ? 0 : (totalScore || 0) / scoreNeededForNextLevel;
+  const progress = (displayScore || 0) / scoreNeededForNextLevel;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.primary }]}>
+      {/* Botón de Atrás si no es mi perfil */}
+      {!isOwnProfile && (
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <IconButton icon="arrow-left" iconColor="#FFF" size={24} />
+        </TouchableOpacity>
+      )}
+
       <View style={styles.userInfo}>
-        {/* Muestra la imagen de perfil o un fallback */}
         <Avatar.Image
           size={64}
-          source={{ uri: profileImage || 'https://avatar.iran.liara.run/public/47' }} // Usa la imagen del contexto
+          source={{ uri: displayImage || 'https://avatar.iran.liara.run/public/47' }}
         />
         <View style={styles.userInfoText}>
-          {/* Muestra el nombre de usuario o "Cargando..." */}
           <Text variant="headlineSmall" style={styles.name}>
-            {loadingProfile ? 'Cargando...' : (username || 'Usuario')}
+            {loadingProfile && isOwnProfile ? 'Cargando...' : (displayName || 'Usuario')}
           </Text>
-          {/* Ya no mostramos userHandle ya que no está en la DB */}
+          {/* Subtítulo opcional o handle */}
         </View>
-        <Link href="/configuracion" asChild>
-          <IconButton icon="cog-outline" iconColor="#FFF" />
-        </Link>
+
+        {/* Icono de configuración solo si es mi perfil */}
+        {isOwnProfile && (
+          <Link href="/configuracion" asChild>
+            <IconButton icon="cog-outline" iconColor="#FFF" />
+          </Link>
+        )}
       </View>
+
       <View style={styles.progressContainer}>
-        {/* Puedes calcular el nivel basado en totalScore si lo deseas */}
-        <Text style={styles.levelText}>Nivel ?</Text>
-        <ProgressBar progress={progress} color="#FFF" style={styles.progressBar} />
-        {/* Muestra el puntaje total o "..." mientras carga */}
+        <Text style={styles.levelText}>Nivel {Math.floor((displayScore || 0) / 500) + 1}</Text>
+        <ProgressBar progress={progress > 1 ? 1 : progress} color="#FFF" style={styles.progressBar} />
         <Text style={styles.pointsText}>
-            {loadingProfile ? '...' : (totalScore ?? 0)}/{scoreNeededForNextLevel} pts
+            {displayScore || 0} pts
         </Text>
       </View>
     </View>
   );
 };
 
-// --- Estilos ---
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 50, // Ajusta según sea necesario para SafeArea/StatusBar
+    paddingTop: 50,
     paddingHorizontal: 16,
     paddingBottom: 16,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    elevation: 4,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 4,
+    zIndex: 10,
   },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+    marginTop: 10, // Espacio extra si hay botón de atrás
   },
   userInfoText: {
     flex: 1,
@@ -67,7 +99,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
   },
-  // Eliminamos el estilo username ya que no se usa
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -76,17 +107,19 @@ const styles = StyleSheet.create({
   levelText: {
     color: '#FFF',
     marginRight: 8,
+    fontWeight: 'bold',
   },
   progressBar: {
     flex: 1,
-    height: 8,
+    height: 6,
     borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   pointsText: {
     color: '#FFF',
     marginLeft: 8,
-    minWidth: 80, // Ancho mínimo para evitar saltos al cargar
+    minWidth: 60,
     textAlign: 'right',
+    fontWeight: 'bold',
   },
 });
-
