@@ -169,13 +169,13 @@ export default function RetosScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Configuración de StatusBar para consistencia */}
+      {/* ESTILO HOME: StatusBar con iconos oscuros sobre fondo claro */}
       <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
 
-      {/* Header Simple y Limpio */}
+      {/* ESTILO HOME: Header limpio con elevación sutil */}
       <SafeAreaView edges={['top']} style={{ backgroundColor: theme.colors.surface, elevation: 2, zIndex: 1 }}>
         <View style={styles.header}>
-            <Text variant="headlineMedium" style={styles.headerTitle}>Desafíos</Text>
+            <Text variant="headlineMedium" style={[styles.headerTitle, { color: theme.colors.onSurface }]}>Desafíos</Text>
             <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>
                 Supera retos y gana puntos eco
             </Text>

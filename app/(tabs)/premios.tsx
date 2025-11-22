@@ -452,33 +452,39 @@ export default function PremiosScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.primary }]} edges={['top']} >
-      <StatusBar barStyle="light-content" />
-      <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-        <View>
-          <Text variant="headlineMedium" style={styles.headerTitle}>Premios</Text>
-          <Text variant="bodyLarge" style={styles.headerSubtitle}>Canjea tus puntos por recompensas</Text>
-        </View>
-        <View style={styles.pointsContainer}>
-          <Text style={styles.pointsValue}>{loadingProfile ? '...' : (totalScore ?? 0)}</Text>
-          <Text style={styles.pointsLabel}>Puntos disponibles</Text>
-        </View>
-      </View>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* ESTILO HOME: StatusBar con iconos oscuros */}
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
 
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <ScrollView contentContainerStyle={styles.container}>
-          <SegmentedButtons
-            value={activeTab}
-            onValueChange={setActiveTab as (value: string) => void}
-            buttons={[
-              { value: 'disponibles', label: 'Disponibles' },
-              { value: 'cupones', label: 'Mis Cupones' },
-            ]}
-            style={styles.tabs}
-          />
-          {renderTabContent()}
-        </ScrollView>
-      </View>
+      {/* ESTILO HOME: Header limpio estilo HomeHeader */}
+      <SafeAreaView edges={['top']} style={{ backgroundColor: theme.colors.surface, elevation: 2, zIndex: 1 }}>
+        <View style={styles.header}>
+          <View>
+            <Text variant="headlineMedium" style={[styles.headerTitle, { color: theme.colors.onSurface }]}>Premios</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>Canjea tus puntos</Text>
+          </View>
+          {/* Píldora de puntos consistente con HomeHeader */}
+          <Surface style={[styles.pointsPill, { backgroundColor: theme.colors.secondaryContainer }]} elevation={0}>
+            <Icon name="leaf" size={16} color={theme.colors.primary} />
+            <Text style={[styles.pointsText, { color: theme.colors.onSecondaryContainer }]}>
+              {loadingProfile ? '...' : (totalScore ?? 0)}
+            </Text>
+          </Surface>
+        </View>
+      </SafeAreaView>
+
+      <ScrollView contentContainerStyle={styles.container}>
+        <SegmentedButtons
+          value={activeTab}
+          onValueChange={setActiveTab as (value: string) => void}
+          buttons={[
+            { value: 'disponibles', label: 'Disponibles' },
+            { value: 'cupones', label: 'Mis Cupones' },
+          ]}
+          style={styles.tabs}
+        />
+        {renderTabContent()}
+      </ScrollView>
 
        {/* Success Modal */}
        <Portal>
@@ -529,25 +535,36 @@ export default function PremiosScreen() {
                 <Text style={{marginTop: 15, color: theme.colors.onSurface}}>Procesando canje...</Text>
              </Modal>
          </Portal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
+  // Ajustamos header para que coincida con HomeHeader
   header: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    paddingTop: 10,
   },
-  headerTitle: { fontWeight: 'bold', color: 'white' },
-  headerSubtitle: { marginTop: 4, color: 'white', opacity: 0.9 },
-  pointsContainer: { alignItems: 'center' },
-  pointsValue: { color: 'white', fontWeight: 'bold', fontSize: 24 },
-  pointsLabel: { color: 'white', opacity: 0.9, fontSize: 12 },
+  headerTitle: {
+    fontWeight: 'bold',
+  },
+  // Estilo de la píldora de puntos idéntico al Home
+  pointsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  pointsText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
   container: { padding: 16, paddingBottom: 48, flexGrow: 1 },
   tabs: { marginBottom: 24 },
   sectionHeader: {

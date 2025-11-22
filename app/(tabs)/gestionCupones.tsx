@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, StatusBar, FlatList, Alert, ActivityIndicator, Image, Dimensions, TouchableOpacity } from 'react-native';
-import { Text, useTheme, SegmentedButtons, Button, FAB, Card, Chip, IconButton, Modal, Portal, ProgressBar, Avatar, Divider } from 'react-native-paper';
+import { Text, useTheme, SegmentedButtons, Button, FAB, Card, Chip, IconButton, Modal, Portal, ProgressBar, Avatar, Divider, Surface } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../context/UserContext';
@@ -8,6 +8,7 @@ import { CuponEditorModal } from '../../components/cupones/CuponEditorModal';
 import { router } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // --- Interfaces ---
 interface MisCupones {
@@ -184,15 +185,24 @@ export default function GestionCuponesScreen() {
   // --- Render Components ---
 
   const renderHeader = () => (
-    <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-      <View style={styles.headerContent}>
+    <SafeAreaView edges={['top']} style={{ backgroundColor: theme.colors.surface, elevation: 2, zIndex: 1 }}>
+      <View style={styles.header}>
         <View>
-          <Text variant="headlineMedium" style={styles.headerTitle}>Panel de Control</Text>
-          <Text variant="bodyMedium" style={styles.headerSubtitle}>Gestiona tus promociones, {username}</Text>
+          <Text variant="headlineMedium" style={[styles.headerTitle, { color: theme.colors.onSurface }]}>
+            Gestionar
+          </Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>
+            Tus promociones y canjes
+          </Text>
         </View>
-        <Avatar.Icon size={48} icon="store" style={{backgroundColor: 'rgba(255,255,255,0.2)'}} color="white" />
+        <Avatar.Icon
+            size={48}
+            icon="store"
+            style={{ backgroundColor: theme.colors.secondaryContainer }}
+            color={theme.colors.onSecondaryContainer}
+        />
       </View>
-    </View>
+    </SafeAreaView>
   );
 
   const renderEmptyState = (message: string, icon: string, action?: () => void, actionLabel?: string) => (
@@ -211,77 +221,91 @@ export default function GestionCuponesScreen() {
     const progress = item.max_canjeos ? (item.canjeos_actuales / item.max_canjeos) : 0;
     const isExpired = item.fecha_fin && new Date(item.fecha_fin) < new Date();
     const statusColor = !item.disponible || isExpired ? theme.colors.error : theme.colors.primary;
+    const statusText = !item.disponible ? "Inactivo" : isExpired ? "Expirado" : "Activo";
 
     return (
-      <Card style={styles.card} onPress={() => handleOpenCreator(item)} mode="elevated">
-        {item.imagen_url && <Card.Cover source={{ uri: item.imagen_url }} style={styles.cardCover} />}
-        <Card.Content style={styles.cardContent}>
-          <View style={styles.cardHeader}>
-            <Text variant="titleMedium" style={styles.cardTitle} numberOfLines={1}>{item.titulo}</Text>
-
-            {/* --- CHIP CORREGIDO --- */}
-            <Chip
-              compact // Reduce el padding interno
-              mode="flat" // Quita la sombra/elevación para que se vea más limpio
-              textStyle={{ fontSize: 11, color: 'white', fontWeight: 'bold', lineHeight: 14 }}
-              style={{ backgroundColor: statusColor, height: 28, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }} // Altura aumentada a 28
-            >
-              {!item.disponible ? "Inactivo" : isExpired ? "Expirado" : "Activo"}
-            </Chip>
-            {/* --- FIN CHIP CORREGIDO --- */}
-
-          </View>
-
-          <Text variant="bodySmall" style={{color: theme.colors.onSurfaceVariant, marginBottom: 8}} numberOfLines={2}>
-            {item.descripcion}
-          </Text>
-
-          <View style={styles.statsContainer}>
-            <View style={styles.statBadge}>
-               <Icon name="star" size={14} color={theme.colors.primary} />
-               <Text style={{marginLeft: 4, fontSize: 12, fontWeight: 'bold'}}>{item.puntos_necesarios} pts</Text>
+      <TouchableOpacity onPress={() => handleOpenCreator(item)} activeOpacity={0.9}>
+        <Surface style={styles.card} elevation={1}>
+            <View style={styles.cardImageContainer}>
+                {item.imagen_url ? (
+                    <Image source={{ uri: item.imagen_url }} style={styles.cardCover} />
+                ) : (
+                    <View style={[styles.cardCover, { backgroundColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' }]}>
+                        <Icon name="image-off" size={30} color="#999" />
+                    </View>
+                )}
+                <View style={styles.statusBadgeContainer}>
+                    <Chip
+                        compact
+                        style={{ backgroundColor: statusColor, height: 26 }}
+                        textStyle={{ fontSize: 10, color: 'white', fontWeight: 'bold', lineHeight: 12 }}
+                    >
+                        {statusText}
+                    </Chip>
+                </View>
             </View>
-            <View style={styles.statBadge}>
-               <Icon name="calendar" size={14} color={theme.colors.secondary} />
-               <Text style={{marginLeft: 4, fontSize: 12}}>
-                 {item.fecha_fin ? new Date(item.fecha_fin).toLocaleDateString() : 'Ilimitado'}
-               </Text>
-            </View>
-          </View>
 
-          <View style={{ marginTop: 12 }}>
-            <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4}}>
-                <Text variant="labelSmall">Canjeos</Text>
-                <Text variant="labelSmall">{item.canjeos_actuales} / {item.max_canjeos || '∞'}</Text>
+            <View style={styles.cardContent}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4}}>
+                    <Text variant="titleMedium" style={styles.cardTitle} numberOfLines={1}>{item.titulo}</Text>
+                    <Icon name="chevron-right" size={20} color={theme.colors.outline} />
+                </View>
+
+                <Text variant="bodySmall" style={{color: theme.colors.onSurfaceVariant, marginBottom: 12}} numberOfLines={2}>
+                    {item.descripcion}
+                </Text>
+
+                <View style={styles.statsRow}>
+                    <View style={[styles.statPill, { backgroundColor: theme.colors.secondaryContainer }]}>
+                        <Icon name="star" size={14} color={theme.colors.onSecondaryContainer} />
+                        <Text style={{ marginLeft: 4, fontSize: 12, color: theme.colors.onSecondaryContainer, fontWeight: 'bold' }}>
+                            {item.puntos_necesarios} pts
+                        </Text>
+                    </View>
+                    <View style={[styles.statPill, { backgroundColor: '#f0f0f0' }]}>
+                         <Icon name="calendar" size={14} color="#666" />
+                         <Text style={{ marginLeft: 4, fontSize: 12, color: '#666' }}>
+                            {item.fecha_fin ? new Date(item.fecha_fin).toLocaleDateString() : 'Ilimitado'}
+                         </Text>
+                    </View>
+                </View>
+
+                <Divider style={{ marginVertical: 12 }} />
+
+                <View>
+                    <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6}}>
+                        <Text variant="labelSmall" style={{color: theme.colors.onSurfaceVariant}}>Progreso Canjeos</Text>
+                        <Text variant="labelSmall" style={{fontWeight: 'bold'}}>{item.canjeos_actuales} / {item.max_canjeos || '∞'}</Text>
+                    </View>
+                    {item.max_canjeos && (
+                        <ProgressBar progress={progress} color={progress >= 1 ? theme.colors.error : theme.colors.primary} style={{height: 6, borderRadius: 3}} />
+                    )}
+                </View>
             </View>
-            {item.max_canjeos && (
-                <ProgressBar progress={progress} color={progress >= 1 ? theme.colors.error : theme.colors.primary} style={{height: 6, borderRadius: 3}} />
-            )}
-          </View>
-        </Card.Content>
-      </Card>
+        </Surface>
+      </TouchableOpacity>
     );
   };
 
   const renderCuponCanjeado = ({ item }: { item: CuponCanjeado }) => (
-    <Card style={[styles.card, item.usado && { opacity: 0.7, backgroundColor: '#f5f5f5' }]} mode="outlined">
-      <View style={{flexDirection: 'row', padding: 12}}>
+    <Surface style={[styles.card, item.usado && { opacity: 0.8, backgroundColor: '#f9f9f9' }]} elevation={1}>
+      <View style={{flexDirection: 'row', padding: 16, alignItems: 'center'}}>
          <Avatar.Image
-            size={50}
+            size={48}
             source={{ uri: item.usuarios?.avatar_url || 'https://avatar.iran.liara.run/public' }}
-            style={{marginRight: 12}}
+            style={{marginRight: 16}}
          />
          <View style={{flex: 1}}>
             <Text variant="titleSmall" style={{fontWeight: 'bold'}}>{item.usuarios?.usuario || 'Usuario'}</Text>
-            <Text variant="bodySmall" style={{color: theme.colors.primary}}>
-                Canjeó: {item.cupones?.titulo}
+            <Text variant="bodySmall" style={{color: theme.colors.primary, marginTop: 2}}>
+                {item.cupones?.titulo}
             </Text>
-            <Text variant="labelSmall" style={{color: theme.colors.outline}}>
+            <Text variant="labelSmall" style={{color: theme.colors.outline, marginTop: 4}}>
                 {new Date(item.fecha_canje).toLocaleString()}
             </Text>
          </View>
-         <TouchableOpacity onPress={() => setVerQR(item)}>
-             <Icon name="qrcode-scan" size={28} color={theme.colors.primary} />
+         <TouchableOpacity onPress={() => setVerQR(item)} style={styles.qrIconBtn}>
+             <Icon name="qrcode-scan" size={24} color={theme.colors.onPrimary} />
          </TouchableOpacity>
       </View>
 
@@ -289,22 +313,22 @@ export default function GestionCuponesScreen() {
         <View style={styles.cardActionFooter}>
             <Button
                 mode="contained"
-                compact
                 onPress={() => handleMarcarUsado(item.id)}
-                style={{flex: 1}}
+                style={{flex: 1, borderRadius: 8}}
                 icon="check-decagram"
             >
                 Validar Cupón
             </Button>
         </View>
       ) : (
-        <View style={[styles.cardActionFooter, {backgroundColor: '#e0e0e0', justifyContent: 'center'}]}>
+        <View style={[styles.cardActionFooter, {backgroundColor: '#eee', justifyContent: 'center'}]}>
+            <Icon name="check-circle" size={16} color="#666" style={{marginRight: 6}} />
             <Text style={{color: '#666', fontStyle: 'italic', fontSize: 12}}>
                 Validado el {item.fecha_uso ? new Date(item.fecha_uso).toLocaleDateString() : 'N/A'}
             </Text>
         </View>
       )}
-    </Card>
+    </Surface>
   );
 
   const renderContent = () => {
@@ -354,12 +378,12 @@ export default function GestionCuponesScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.primary }]} edges={['top']}>
-      <StatusBar barStyle="light-content" />
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
 
       {renderHeader()}
 
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={styles.container}>
         <View style={styles.tabsContainer}>
             <SegmentedButtons
             value={activeTab}
@@ -380,7 +404,7 @@ export default function GestionCuponesScreen() {
         <FAB
           icon="plus"
           label="Nuevo"
-          style={[styles.fab, { backgroundColor: theme.colors.tertiary }]}
+          style={[styles.fab, { backgroundColor: theme.colors.primary }]}
           color="#fff"
           onPress={() => handleOpenCreator(null)}
         />
@@ -421,7 +445,7 @@ export default function GestionCuponesScreen() {
         </Modal>
       </Portal>
 
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -430,30 +454,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-    paddingTop: 10,
-  },
-  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    paddingTop: 10,
   },
   headerTitle: {
     fontWeight: 'bold',
-    color: 'white',
-  },
-  headerSubtitle: {
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
   },
   container: {
     flex: 1,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -16, // Efecto de superposición
-    paddingTop: 20,
-    paddingHorizontal: 16,
+    padding: 16,
   },
   tabsContainer: {
     marginBottom: 16,
@@ -464,47 +477,61 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 80, // Espacio para el FAB
   },
+  // --- Card Styling Actualizado ---
   card: {
     marginBottom: 16,
     backgroundColor: 'white',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
+  cardImageContainer: {
+      position: 'relative',
+      height: 140,
+  },
   cardCover: {
-    height: 140,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  statusBadgeContainer: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
   },
   cardContent: {
     padding: 16,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
   },
   cardTitle: {
     fontWeight: 'bold',
     flex: 1,
     marginRight: 8,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  statBadge: {
+  statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+  },
+  statPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 8,
     marginRight: 8,
   },
   cardActionFooter: {
-      padding: 8,
+      padding: 12,
       borderTopWidth: 1,
       borderColor: '#eee',
       flexDirection: 'row',
+  },
+  qrIconBtn: {
+      backgroundColor: '#2E7D5E', // Color primario manual o usar theme
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 2,
   },
   fab: {
     position: 'absolute',
@@ -526,10 +553,10 @@ const styles = StyleSheet.create({
   // Estilos del Modal QR (Ticket)
   qrModalContainer: {
     marginHorizontal: 30,
-    backgroundColor: 'transparent', // El fondo es transparente para ver el ticket
+    backgroundColor: 'transparent',
   },
   ticketHeader: {
-    backgroundColor: '#2E7D5E', // Color primario
+    backgroundColor: '#2E7D5E',
     height: 60,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
@@ -551,7 +578,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)', // Color del backdrop del modal
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   holeRight: {
     position: 'absolute',
