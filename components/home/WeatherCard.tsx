@@ -1,19 +1,21 @@
 import React from 'react';
 import { StyleSheet, View, TouchableOpacity } from 'react-native';
-import { Card, Text, useTheme, Button } from 'react-native-paper';
+import { Card, Text, useTheme } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface WeatherCardProps {
   weather: {
     condition: string;
-    tempRange: string;
+    tempMin: string; // Corregido: antes era tempRange en la prop pero usabas min/max en index
+    tempMax: string;
     temp: string;
   } | null;
   isNight: boolean;
   loading?: boolean;
   error?: boolean;
   onRetry?: () => void;
+  onManualInput?: () => void; // Nueva prop
 }
 
 const getWeatherIcon = (condition: string, isNight: boolean): string => {
@@ -31,7 +33,7 @@ const Skeleton = ({ width, height, style }: { width: number | string, height: nu
   <View style={[{ width, height, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 4 }, style]} />
 );
 
-export default function WeatherCard({ weather, isNight, loading = false, error = false, onRetry }: WeatherCardProps) {
+export default function WeatherCard({ weather, isNight, loading = false, error = false, onRetry, onManualInput }: WeatherCardProps) {
   const theme = useTheme();
 
   const gradientColors = isNight
@@ -40,14 +42,15 @@ export default function WeatherCard({ weather, isNight, loading = false, error =
 
   const conditionText = weather?.condition || "--";
   const tempText = weather?.temp || "--";
-  const rangeText = weather?.tempRange || "--";
+  const tempMin = weather?.tempMin || "-";
+  const tempMax = weather?.tempMax || "-";
   const iconName = getWeatherIcon(conditionText, isNight);
 
   if (error) {
     return (
       <Card style={styles.card} mode="elevated">
         <LinearGradient
-          colors={['#e57373', '#ef5350']} // Rojo suave para error
+          colors={['#e57373', '#ef5350']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
@@ -55,20 +58,29 @@ export default function WeatherCard({ weather, isNight, loading = false, error =
           <View style={styles.content}>
             <View style={styles.textContainer}>
               <Text variant="titleMedium" style={styles.titleText}>
-                Clima no disponible
+                Ubicación no disponible
               </Text>
               <Text variant="bodySmall" style={styles.conditionText}>
-                Verifica tu conexión
+                No pudimos obtener tu GPS
               </Text>
-              {onRetry && (
-                <TouchableOpacity onPress={onRetry} style={styles.retryButton}>
-                  <Text style={styles.retryText}>Reintentar</Text>
-                  <Icon name="refresh" size={16} color="white" style={{marginLeft: 4}} />
-                </TouchableOpacity>
-              )}
+
+              <View style={styles.errorActions}>
+                {onRetry && (
+                  <TouchableOpacity onPress={onRetry} style={styles.actionButton}>
+                    <Icon name="refresh" size={16} color="white" />
+                    <Text style={styles.actionText}>Reintentar</Text>
+                  </TouchableOpacity>
+                )}
+                {onManualInput && (
+                  <TouchableOpacity onPress={onManualInput} style={[styles.actionButton, { marginLeft: 8 }]}>
+                    <Icon name="map-search" size={16} color="white" />
+                    <Text style={styles.actionText}>Buscar Ciudad</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
             <View style={styles.weatherInfo}>
-              <Icon name="wifi-off" size={40} color="#fff" />
+              <Icon name="map-marker-off" size={40} color="#fff" />
             </View>
           </View>
         </LinearGradient>
@@ -101,7 +113,7 @@ export default function WeatherCard({ weather, isNight, loading = false, error =
                   {conditionText}
                 </Text>
                 <Text variant="bodyMedium" style={styles.rangeText}>
-                  Mín/Máx: {rangeText}
+                  Mín: {tempMin}° / Máx: {tempMax}°
                 </Text>
               </>
             )}
@@ -168,19 +180,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     lineHeight: 40,
   },
-  retryButton: {
-    marginTop: 8,
+  errorActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.2)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 12,
-    alignSelf: 'flex-start',
   },
-  retryText: {
+  actionText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 12,
+    marginLeft: 6,
   }
 });

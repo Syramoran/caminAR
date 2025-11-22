@@ -10,15 +10,13 @@ interface Photo {
 }
 
 interface Props {
-  userId: number;
+  userId: number; // Este es el ID del dueño del perfil que estamos viendo
 }
 
 const numColumns = 3;
 const { width } = Dimensions.get('window');
-// Ajuste para que ocupe todo el ancho sin márgenes del contenedor padre
-// Calculamos el tamaño restando un pequeño gap
 const gap = 1;
-const availableWidth = width - 32; // 16 paddingLeft + 16 paddingRight del contenedor padre 'container' en perfil.tsx
+const availableWidth = width - 32;
 const imageSize = (availableWidth - (gap * (numColumns - 1))) / numColumns;
 
 export const PhotosGrid = ({ userId }: Props) => {
@@ -73,8 +71,8 @@ export const PhotosGrid = ({ userId }: Props) => {
         keyExtractor={(item) => item.id.toString()}
         numColumns={numColumns}
         scrollEnabled={false}
-        columnWrapperStyle={{ gap: gap }} // Espacio horizontal
-        contentContainerStyle={{ gap: gap }} // Espacio vertical
+        columnWrapperStyle={{ gap: gap }}
+        contentContainerStyle={{ gap: gap }}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => setSelectedPhoto(item)}
@@ -86,7 +84,7 @@ export const PhotosGrid = ({ userId }: Props) => {
                   width: imageSize,
                   height: imageSize,
                   backgroundColor: '#e1e1e1',
-                  borderRadius: 2 // Ligeramente redondeado o 0 para totalmente cuadrado
+                  borderRadius: 2
               }}
               resizeMode="cover"
             />
@@ -100,6 +98,7 @@ export const PhotosGrid = ({ userId }: Props) => {
             onDismiss={() => setSelectedPhoto(null)}
             photoUrl={selectedPhoto.url_foto}
             photoId={selectedPhoto.id}
+            photoOwnerId={userId} // <--- ¡AQUÍ ESTABA EL FALTANTE! Pasamos el ID del dueño
           />
       )}
     </View>

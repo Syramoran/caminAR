@@ -6,8 +6,8 @@ import { useUser } from '../../context/UserContext';
 
 interface Comment {
   id: number;
-  comentario: string; // Nombre columna según tu esquema
-  fecha_comentario: string; // Nombre columna según tu esquema
+  comentario: string;
+  fecha_comentario: string;
   usuario: {
     usuario: string;
     avatar_url: string | null;
@@ -19,9 +19,10 @@ interface Props {
   onDismiss: () => void;
   photoUrl: string;
   photoId: number;
+  photoOwnerId: number; // ID del dueño de la foto para enviarle la notificación
 }
 
-export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Props) => {
+export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId, photoOwnerId }: Props) => {
   const theme = useTheme();
   const { userId } = useUser();
   const [likesCount, setLikesCount] = useState(0);
@@ -40,7 +41,6 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
 
   const fetchLikes = async () => {
     try {
-      // Contar likes totales en foto_likes
       const { count } = await supabase
         .from('foto_likes')
         .select('*', { count: 'exact', head: true })
@@ -49,13 +49,12 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
       setLikesCount(count || 0);
 
       if (userId) {
-        // Verificar si el usuario actual dio like
         const { data } = await supabase
           .from('foto_likes')
           .select('id')
           .eq('foto_id', photoId)
           .eq('usuario_id', userId)
-          .maybeSingle(); // Usamos maybeSingle para evitar errores si no hay like
+          .maybeSingle();
         setIsLiked(!!data);
       }
     } catch (error) {
@@ -66,7 +65,6 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
   const fetchComments = async () => {
     setLoadingComments(true);
     try {
-      // Obtener comentarios de foto_comentarios con datos del usuario
       const { data, error } = await supabase
         .from('foto_comentarios')
         .select(`
@@ -83,7 +81,6 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
 
       if (error) throw error;
 
-      // Mapeo manual para asegurar tipos
       const mappedComments = data.map((item: any) => ({
         id: item.id,
         comentario: item.comentario,
@@ -99,10 +96,29 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
     }
   };
 
+  // Función auxiliar para crear notificaciones
+  const createNotification = async (tipo: 'like' | 'comentario', mensaje: string) => {
+    // No enviar notificación si el usuario interactúa con su propia foto
+    if (!userId || userId === photoOwnerId) return;
+
+    try {
+      await supabase.from('notificaciones').insert({
+        usuario_id: photoOwnerId, // El destinatario es el dueño de la foto
+        origen_usuario_id: userId, // El origen soy yo
+        tipo: tipo,
+        mensaje: mensaje,
+        referencia_tipo: 'foto',
+        referencia_id: photoId,
+        leido: false
+      });
+    } catch (e) {
+      console.error("Error creando notificación", e);
+    }
+  };
+
   const handleToggleLike = async () => {
     if (!userId) return;
 
-    // Actualización optimista
     const previousLiked = isLiked;
     setIsLiked(!isLiked);
     setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
@@ -112,9 +128,11 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
         await supabase.from('foto_likes').delete().eq('foto_id', photoId).eq('usuario_id', userId);
       } else {
         await supabase.from('foto_likes').insert({ foto_id: photoId, usuario_id: userId });
+        // Trigger de notificación al dar like
+        createNotification('like', 'Le gustó tu foto');
       }
     } catch (error) {
-      setIsLiked(previousLiked); // Revertir en error
+      setIsLiked(previousLiked);
       setLikesCount(prev => previousLiked ? prev + 1 : prev - 1);
       console.error("Error toggling like:", error);
     }
@@ -133,8 +151,12 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
         });
 
       if (error) throw error;
+
+      // Trigger de notificación al comentar
+      createNotification('comentario', `Comentó: ${newComment.trim().substring(0, 20)}${newComment.length > 20 ? '...' : ''}`);
+
       setNewComment('');
-      fetchComments(); // Recargar para mostrar el nuevo
+      fetchComments();
     } catch (error) {
       console.error("Error sending comment:", error);
       Alert.alert("Error", "No se pudo enviar el comentario.");
@@ -158,7 +180,6 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
       <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modalContainer}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
 
-          {/* Header Modal */}
           <View style={styles.header}>
             <IconButton icon="close" onPress={onDismiss} />
             <Text variant="titleMedium" style={{fontWeight: 'bold'}}>Publicación</Text>
@@ -166,10 +187,8 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
           </View>
 
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            {/* Imagen */}
             <Image source={{ uri: photoUrl }} style={styles.mainImage} resizeMode="cover" />
 
-            {/* Barra de Acciones */}
             <View style={styles.actionsBar}>
               <View style={styles.likeContainer}>
                 <IconButton
@@ -185,7 +204,6 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
 
             <Divider style={{marginVertical: 8}} />
 
-            {/* Comentarios */}
             <View style={styles.commentsSection}>
               {loadingComments ? (
                 <ActivityIndicator size="small" style={{marginTop: 20}} />
@@ -201,7 +219,6 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId }: Prop
             </View>
           </ScrollView>
 
-          {/* Input */}
           <View style={styles.inputContainer}>
             <TextInput
               placeholder="Añade un comentario..."
@@ -232,7 +249,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     backgroundColor: 'white',
     flex: 1,
-    margin: 0, // Fullscreen modal
+    margin: 0,
   },
   header: {
     flexDirection: 'row',
@@ -248,7 +265,7 @@ const styles = StyleSheet.create({
   },
   mainImage: {
     width: '100%',
-    height: 400, // Altura considerable para ver bien la foto
+    height: 400,
     backgroundColor: '#f0f0f0',
   },
   actionsBar: {

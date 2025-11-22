@@ -89,11 +89,24 @@ export default function PerfilScreen() {
     setLoadingFollow(true);
     try {
       if (isFollowing) {
+        // Dejar de seguir
         await supabase.from('seguidores').delete().eq('seguidor_id', currentUserId).eq('seguido_id', targetUserId);
         setIsFollowing(false);
       } else {
+        // Seguir
         await supabase.from('seguidores').insert({ seguidor_id: currentUserId, seguido_id: targetUserId });
         setIsFollowing(true);
+
+        // TRIGGER NOTIFICACIÓN: Solo si no me sigo a mí mismo (lo cual no debería pasar en la UI, pero por seguridad)
+        if (currentUserId !== targetUserId) {
+            await supabase.from('notificaciones').insert({
+                usuario_id: targetUserId, // El perfil que visito recibe la notif
+                origen_usuario_id: currentUserId, // Yo soy el origen
+                tipo: 'seguidor',
+                mensaje: 'Comenzó a seguirte',
+                leido: false
+            });
+        }
       }
     } catch (err) {
       console.error("Error toggling follow:", err);
@@ -180,7 +193,6 @@ export default function PerfilScreen() {
                         source={{ uri: displayUser.profileImage || 'https://avatar.iran.liara.run/public/47' }}
                         style={{ backgroundColor: theme.colors.surfaceVariant }}
                     />
-                    {/* Pequeño indicador visual de que es tocable (opcional) */}
                     <View style={styles.cameraIconBadge}>
                         <Icon name="camera-burst" size={12} color="white" />
                     </View>
@@ -397,7 +409,6 @@ const styles = StyleSheet.create({
       justifyContent: 'center',
       alignItems: 'center'
   },
-  // Nuevo estilo para el icono sobre el avatar
   cameraIconBadge: {
       position: 'absolute',
       bottom: 0,
@@ -408,7 +419,6 @@ const styles = StyleSheet.create({
       borderWidth: 1,
       borderColor: 'white'
   },
-  // Estilos para el Modal de Fotos (consistente con otros modales)
   modalContainer: {
     backgroundColor: 'white',
     margin: 20,
