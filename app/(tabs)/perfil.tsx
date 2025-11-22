@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SegmentedButtons, Card, Button, useTheme, Text } from 'react-native-paper';
-import { useLocalSearchParams } from 'expo-router'; // Para leer params
+import { useLocalSearchParams } from 'expo-router';
 
 // Componentes
 import { ProfileHeader } from '../../components/perfil/ProfileHeader';
@@ -17,18 +17,16 @@ import { PhotosGrid } from '../../components/perfil/PhotosGrid';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../context/UserContext';
 
-// --- Pantalla Principal del Perfil ---
-
 export default function PerfilScreen() {
   const theme = useTheme();
 
   // 1. Obtener parámetros y contexto
   const params = useLocalSearchParams();
-  const paramUserId = params.userId ? parseInt(params.userId as string, 10) : null;
+  // Convertir a número solo si existe y es un string válido
+  const paramUserId = params.userId ? parseInt(Array.isArray(params.userId) ? params.userId[0] : params.userId, 10) : null;
   const { userId: currentUserId, totalScore: myScore } = useUser();
 
   // 2. Determinar si es perfil propio o ajeno
-  // Si no hay paramUserId, es mi perfil. Si lo hay y coincide con mi ID, también.
   const isOwnProfile = !paramUserId || paramUserId === currentUserId;
   const targetUserId = isOwnProfile ? currentUserId : paramUserId;
 
@@ -104,7 +102,7 @@ export default function PerfilScreen() {
 
   // Renderizado condicional del contenido principal
   const renderContent = () => {
-    if (activeTab === 'estadisticas') return <StatisticsSection />; // Se podría adaptar StatisticsSection para recibir userId
+    if (activeTab === 'estadisticas') return <StatisticsSection />;
     if (activeTab === 'ranking') return <RankingList />;
     return null;
   };
@@ -137,7 +135,6 @@ export default function PerfilScreen() {
           {/* --- VISTA DE OTRO USUARIO --- */}
           {!isOwnProfile ? (
             <>
-              {/* Botón de Seguir */}
               <Button
                 mode={isFollowing ? "outlined" : "contained"}
                 onPress={handleToggleFollow}
@@ -148,7 +145,6 @@ export default function PerfilScreen() {
                 {isFollowing ? "Siguiendo" : "Seguir"}
               </Button>
 
-              {/* Sección de Fotos (Grid) */}
               <Card style={styles.sectionCard}>
                 <Card.Title title="Galería de Fotos" />
                 <Card.Content>
@@ -159,14 +155,12 @@ export default function PerfilScreen() {
           ) : (
             /* --- VISTA DE MI PERFIL (Original) --- */
             <>
-              {/* Resumen rápido */}
               <View style={styles.statsRow}>
                 <StatCard icon="trophy-variant-outline" value={`Nvl ${Math.floor((myScore||0)/500)+1}`} label="Nivel" />
                 <StatCard icon="star-circle-outline" value="Eco" label="Status" />
                 <StatCard icon="account-group-outline" value="-" label="Social" />
               </View>
 
-              {/* Botones de Acción Social */}
               <Card style={styles.sectionCard}>
                 <Card.Title title="Social" />
                 <Card.Actions style={styles.friendActions}>
@@ -189,7 +183,6 @@ export default function PerfilScreen() {
                 </Card.Actions>
               </Card>
 
-              {/* Pestañas */}
               <SegmentedButtons
                 value={activeTab}
                 onValueChange={setActiveTab}
@@ -208,7 +201,6 @@ export default function PerfilScreen() {
         </View>
       </ScrollView>
 
-      {/* Modales (Solo necesarios en mi perfil, pero no estorban aquí) */}
       <UserSearchModal
         visible={searchModalVisible}
         onDismiss={() => setSearchModalVisible(false)}

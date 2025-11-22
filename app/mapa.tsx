@@ -3,16 +3,15 @@ import { Alert, Image, StyleSheet, View, ActivityIndicator } from "react-native"
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import MapView, { Marker, Region } from "react-native-maps";
-// *** Importar TextInput de react-native-paper ***
 import { Appbar, Button, Card, Dialog, Portal, Text, TextInput, useTheme, IconButton } from "react-native-paper";
-import { useRouter, useLocalSearchParams } from "expo-router"; // --- IMPORTAR useLocalSearchParams ---
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useUser, Reto } from '../context/UserContext';
 import { useAuth } from "../context/AuthContext";
 
 export default function MapaScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams<{ lat: string, lon: string, title: string }>(); // --- OBTENER PARÁMETROS ---
+  const params = useLocalSearchParams<{ lat: string, lon: string, title: string }>();
 
   const [region, setRegion] = useState<Region | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
@@ -24,26 +23,23 @@ export default function MapaScreen() {
 
   useEffect(() => {
     (async () => {
-      // --- LÓGICA DE REGIÓN INICIAL MODIFICADA ---
       let initialRegion: Region;
       const { lat, lon } = params;
 
       if (lat && lon) {
-        // Si se pasan parámetros, centrar en ellos
         console.log(`[MapaScreen] Centrando en cupón: ${lat}, ${lon}`);
         initialRegion = {
           latitude: parseFloat(lat),
           longitude: parseFloat(lon),
-          latitudeDelta: 0.01, // Zoom cercano
+          latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
       } else {
-        // Si no hay parámetros, pedir ubicación del usuario
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
           Alert.alert("Permiso requerido", "Necesitamos tu ubicación para mostrarte puntos cercanos.");
           initialRegion = {
-            latitude: -31.394, // Concordia (default)
+            latitude: -31.394,
             longitude: -58.018,
             latitudeDelta: 0.02,
             longitudeDelta: 0.02,
@@ -60,7 +56,7 @@ export default function MapaScreen() {
           } catch (error) {
             console.error("Error getting current location:", error);
             Alert.alert("Error de Ubicación", "No se pudo obtener tu ubicación actual. Mostrando ubicación por defecto.");
-            initialRegion = { // Fallback a Concordia
+            initialRegion = {
               latitude: -31.394,
               longitude: -58.018,
               latitudeDelta: 0.02,
@@ -70,9 +66,8 @@ export default function MapaScreen() {
         }
       }
       setRegion(initialRegion);
-      // --- FIN DE LÓGICA DE REGIÓN ---
     })();
-  }, [params]); // Depender de params para que reaccione si cambian
+  }, [params]);
 
   const openCamera = async () => {
      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
@@ -84,18 +79,17 @@ export default function MapaScreen() {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7, // Calidad moderada para reducir tamaño
-      base64: false, // No necesitamos base64 si usamos la URI
+      aspect: [4, 3], // Mantenemos 4:3
+      quality: 0.7,
+      base64: false,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setPhoto(result.assets[0].uri);
-      setDescription(''); // Limpiar descripción al tomar nueva foto
+      setDescription('');
     }
   };
 
-  // Llama a la función del contexto para completar el reto
   const confirmEvidence = async () => {
     if (!selectedChallenge || !photo || !user) {
         Alert.alert("Error", "Faltan datos para completar el reto.");
@@ -114,7 +108,7 @@ export default function MapaScreen() {
             );
             setPhoto(null);
             setSelectedChallenge(null);
-            setDescription(''); // Limpiar descripción
+            setDescription('');
         } else {
             Alert.alert("Error al completar", result.message || "No se pudo completar el reto. Revisa tu conexión e inténtalo de nuevo.");
         }
@@ -128,7 +122,7 @@ export default function MapaScreen() {
 
    const getPinColor = (challenge: Reto) => {
      if (completedChallengeIds.has(challenge.id)) {
-        return theme.colors.backdrop; // Gris o un color que indique completado
+        return theme.colors.backdrop;
      }
      if (challenge.puntos_otorgados >= 200) return theme.colors.error;
      if (challenge.puntos_otorgados >= 100) return theme.colors.primary;
@@ -155,7 +149,6 @@ export default function MapaScreen() {
         <Appbar.Content title="Mapa Interactivo" titleStyle={{ color: '#fff' }}/>
       </Appbar.Header>
       <MapView style={{ flex: 1 }} initialRegion={region}>
-        {/* Marcadores de Retos */}
         {challengesWithLocation.map((challenge) => (
           <Marker
             key={challenge.id}
@@ -170,8 +163,8 @@ export default function MapaScreen() {
             onPress={() => {
                 if (!completedChallengeIds.has(challenge.id)) {
                     setSelectedChallenge(challenge);
-                    setPhoto(null); // Asegurar que no hay foto al seleccionar
-                    setDescription(''); // Limpiar descripción
+                    setPhoto(null);
+                    setDescription('');
                 } else {
                     Alert.alert("Reto Completado", "Ya has completado este reto.");
                 }
@@ -179,18 +172,16 @@ export default function MapaScreen() {
           />
         ))}
 
-        {/* Marcador de Ubicación del Usuario (si no se pasó cupón) */}
          {!params.lat && (
             <Marker coordinate={region} pinColor="blue" title="Tu Ubicación" />
          )}
 
-        {/* --- CAMBIO: Marcador especial para el cupón (si se pasó) --- */}
         {params.lat && params.lon && (
           <Marker
             coordinate={{ latitude: parseFloat(params.lat as string), longitude: parseFloat(params.lon as string) }}
-            pinColor="gold" // Color dorado para destacarlo
+            pinColor="gold"
             title={params.title as string || 'Ubicación del Cupón'}
-            zIndex={10} // Asegurar que esté por encima de otros
+            zIndex={10}
           />
         )}
       </MapView>
@@ -221,7 +212,6 @@ export default function MapaScreen() {
         </Card>
       )}
 
-      {/* Modal de confirmación con TextInput para descripción */}
       <Portal>
         <Dialog visible={!!photo} onDismiss={() => { if (!isCompleting) setPhoto(null); }}>
             <Dialog.Title>Confirmar evidencia</Dialog.Title>
@@ -273,9 +263,9 @@ const styles = StyleSheet.create({
   },
   modalImage: {
     width: '100%',
-    height: 200, // Reducir un poco para dar espacio al input
+    aspectRatio: 4 / 3, // Relación 4:3 forzada
     borderRadius: 8,
-    resizeMode: 'contain',
+    resizeMode: 'contain', // O 'cover' si prefieres llenar el espacio
     marginBottom: 10,
   },
   descriptionInput: {

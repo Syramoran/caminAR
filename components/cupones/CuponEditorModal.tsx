@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Image, TouchableOpacity, Platform } from 'react-native';
 import { Modal, Portal, Text, Button, useTheme, TextInput, ActivityIndicator, IconButton, Switch } from 'react-native-paper';
-import { useForm, Controller, set } from 'react-hook-form';
+import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { supabase } from '../../lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadImage } from '../../lib/storage';
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
-import RNDateTimePicker from '@react-native-community/datetimepicker'; // Para fechas
+import RNDateTimePicker from '@react-native-community/datetimepicker';
 
 interface CuponFormInputs {
   titulo: string;
@@ -15,7 +15,7 @@ interface CuponFormInputs {
   puntos_necesarios: string;
   fecha_inicio: Date;
   fecha_fin: Date | null;
-  max_canjeos: string; // Se manejará como string
+  max_canjeos: string;
   disponible: boolean;
 }
 
@@ -48,16 +48,13 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
   const [isUploading, setIsUploading] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
 
-  // Estados para la imagen
   const [imagenUri, setImagenUri] = useState<string | null>(cupon?.imagen_url || null);
 
-  // Estados para la ubicación
   const [location, setLocation] = useState<{ latitud: number, longitud: number } | null>(
     cupon && cupon.latitud && cupon.longitud ? { latitud: cupon.latitud, longitud: cupon.longitud } : null
   );
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
 
-  // Estados para los selectores de fecha
   const [showInicioPicker, setShowInicioPicker] = useState(false);
   const [showFinPicker, setShowFinPicker] = useState(false);
 
@@ -87,7 +84,7 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [16, 9],
+      aspect: [4, 3], // Cambiado a 4:3 para consistencia
       quality: 0.7,
     });
 
@@ -96,7 +93,6 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
     }
   };
 
-  // --- Lógica de Mapa ---
   const openMap = async () => {
     let region: Region;
     if (location) {
@@ -105,7 +101,7 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert("Permiso denegado", "Se necesita acceso a la ubicación.");
-        region = { latitude: -31.394, longitude: -58.018, latitudeDelta: 0.01, longitudeDelta: 0.01 }; // Concordia
+        region = { latitude: -31.394, longitude: -58.018, latitudeDelta: 0.01, longitudeDelta: 0.01 };
       } else {
         try {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
@@ -130,13 +126,11 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
     setMapVisible(false);
   };
 
-  // --- Lógica de Guardado ---
   const onSubmit: SubmitHandler<CuponFormInputs> = async (data) => {
     setLoading(true);
     let finalImageUrl = cupon?.imagen_url || null;
 
     try {
-      // 1. Subir imagen si cambió
       if (imagenUri && imagenUri !== cupon?.imagen_url) {
         setIsUploading(true);
         const uploadedUrl = await uploadImage(imagenUri);
@@ -148,36 +142,31 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
         setIsUploading(false);
       }
 
-      // 2. Generar código de cupón (si es nuevo)
       const codigo_cupon = cupon?.codigo_cupon || `CAM${Date.now().toString(36).substr(2, 9).toUpperCase()}`;
 
-      // 3. Preparar datos para Supabase
       const cuponData = {
         titulo: data.titulo,
         descripcion: data.descripcion,
         puntos_necesarios: parseInt(data.puntos_necesarios, 10),
-        fecha_inicio: data.fecha_inicio.toISOString().split('T')[0], // Formato YYYY-MM-DD
+        fecha_inicio: data.fecha_inicio.toISOString().split('T')[0],
         fecha_fin: data.fecha_fin ? data.fecha_fin.toISOString().split('T')[0] : null,
         max_canjeos: data.max_canjeos ? parseInt(data.max_canjeos, 10) : null,
         disponible: data.disponible,
         imagen_url: finalImageUrl,
         latitud: location?.latitud || null,
         longitud: location?.longitud || null,
-        // Campos de creación/actualización
         usuario_creador_id: userId,
         codigo_cupon: codigo_cupon,
       };
 
       let error = null;
       if (cupon) {
-        // Actualizar
         const { error: updateError } = await supabase
           .from('cupones')
           .update(cuponData)
           .eq('id', cupon.id);
         error = updateError;
       } else {
-        // Insertar
         const { error: insertError } = await supabase
           .from('cupones')
           .insert(cuponData);
@@ -187,7 +176,7 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
       if (error) throw error;
 
       Alert.alert("Éxito", `Cupón ${cupon ? 'actualizado' : 'creado'} correctamente.`);
-      onClose(true); // Cerrar y refrescar
+      onClose(true);
 
     } catch (error: any) {
       console.error("Error al guardar cupón:", error.message);
@@ -287,7 +276,6 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
             />
             {errors.max_canjeos && <Text style={styles.errorText}>{errors.max_canjeos.message}</Text>}
 
-            {/* Selectores de Fecha */}
             <TouchableOpacity onPress={() => setShowInicioPicker(true)}>
               <TextInput
                 label="Fecha de Inicio"
@@ -331,26 +319,24 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
               />
             )}
 
-            {/* Switch de Disponibilidad */}
             <View style={styles.switchContainer}>
               <Text variant="bodyLarge">Disponible para canjear</Text>
               <Switch value={disponibleVal} onValueChange={(val) => setValue('disponible', val)} />
             </View>
 
-            {/* Selector de Imagen */}
             <Text variant="bodyLarge" style={{marginBottom: 8, marginTop: 16}}>Imagen del Cupón</Text>
             <TouchableOpacity onPress={handleSelectImage}>
               {isUploading ? (
                 <ActivityIndicator style={styles.imagePreview} />
               ) : (
                 <Image
-                  source={{ uri: imagenUri || 'https://placehold.co/600x300/e0e0e0/777?text=Toca+para+subir+imagen' }}
+                  source={{ uri: imagenUri || 'https://placehold.co/800x600/e0e0e0/777?text=Toca+para+subir+imagen' }} // Placeholder 4:3
                   style={styles.imagePreview}
+                  resizeMode="cover"
                 />
               )}
             </TouchableOpacity>
 
-            {/* Selector de Ubicación */}
             <Text variant="bodyLarge" style={{marginBottom: 8, marginTop: 16}}>Ubicación (Opcional)</Text>
             <Button icon="map-marker" mode="outlined" onPress={openMap}>
               {location ? `Lat: ${location.latitud.toFixed(4)}, Lon: ${location.longitud.toFixed(4)}` : 'Seleccionar Ubicación en Mapa'}
@@ -361,7 +347,6 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
                </Button>
             )}
 
-            {/* Botón de Guardar */}
             <Button
               mode="contained"
               onPress={handleSubmit(onSubmit)}
@@ -375,7 +360,6 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
         </ScrollView>
       </Modal>
 
-      {/* Modal del Mapa */}
       <Modal visible={mapVisible} onDismiss={() => setMapVisible(false)} contentContainerStyle={styles.mapModal}>
         <View style={{ flex: 1 }}>
           {mapRegion ? (
@@ -383,7 +367,7 @@ export const CuponEditorModal = ({ visible, onClose, cupon, userId }: Props) => 
               <MapView
                 style={styles.map}
                 initialRegion={mapRegion}
-                onRegionChangeComplete={onMapRegionChange} // Actualiza la región al soltar
+                onRegionChangeComplete={onMapRegionChange}
               />
               <View style={styles.mapMarkerContainer}>
                 <Image source={require('../../assets/images/1.png')} style={styles.mapMarker} resizeMode="contain" />
@@ -431,7 +415,7 @@ const styles = StyleSheet.create({
   },
   imagePreview: {
     width: '100%',
-    height: 150,
+    aspectRatio: 4 / 3, // Relación 4:3 forzada
     borderRadius: 8,
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
@@ -453,7 +437,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     top: '50%',
-    transform: [{ translateX: -25 }, { translateY: -50 }], // Centrar el marcador
+    transform: [{ translateX: -25 }, { translateY: -50 }],
   },
   mapMarker: {
     width: 50,

@@ -1,102 +1,186 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Card, Text, useTheme } from 'react-native-paper'; // Importa useTheme
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import { Card, Text, useTheme, Button } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface WeatherCardProps {
   weather: {
-    condition: string; // Ej: "Parcialmente nublado"
-    tempRange: string; // Ej: "15° - 22°"
-    temp: string;      // Ej: "18"
-  };
-  streak: number;
+    condition: string;
+    tempRange: string;
+    temp: string;
+  } | null;
   isNight: boolean;
+  loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
 }
 
-// Mapeo de condiciones (simplificado) a iconos
-// Puedes expandir esto o usar los códigos WMO si los pasas como prop
 const getWeatherIcon = (condition: string, isNight: boolean): string => {
-  const lowerCaseCondition = condition.toLowerCase();
-  if (lowerCaseCondition.includes('despejado')) return isNight ? 'weather-night' : 'weather-sunny';
-  if (lowerCaseCondition.includes('nube') || lowerCaseCondition.includes('nublado')) return isNight ? 'weather-night-partly-cloudy' : 'weather-partly-cloudy';
-  if (lowerCaseCondition.includes('lluvia') || lowerCaseCondition.includes('llovizna') || lowerCaseCondition.includes('chubasco')) return 'weather-rainy';
-  if (lowerCaseCondition.includes('tormenta')) return 'weather-lightning';
-  if (lowerCaseCondition.includes('nieve')) return 'weather-snowy';
-  if (lowerCaseCondition.includes('niebla')) return 'weather-fog';
-  return isNight ? 'weather-night' : 'weather-sunny'; // Icono por defecto
+  if (!condition) return 'weather-sunny';
+  const lower = condition.toLowerCase();
+  if (lower.includes('despejado')) return isNight ? 'weather-night' : 'weather-sunny';
+  if (lower.includes('nublado') || lower.includes('nube')) return 'weather-partly-cloudy';
+  if (lower.includes('lluvia') || lower.includes('llovizna')) return 'weather-rainy';
+  if (lower.includes('tormenta')) return 'weather-lightning';
+  if (lower.includes('nieve')) return 'weather-snowy';
+  return 'weather-cloudy';
 };
 
+const Skeleton = ({ width, height, style }: { width: number | string, height: number, style?: any }) => (
+  <View style={[{ width, height, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 4 }, style]} />
+);
 
-export default function WeatherCard({ weather, streak, isNight }: WeatherCardProps) {
-  // 1. Obtenemos el tema
+export default function WeatherCard({ weather, isNight, loading = false, error = false, onRetry }: WeatherCardProps) {
   const theme = useTheme();
-  const weatherIcon = getWeatherIcon(weather.condition, isNight);
+
+  const gradientColors = isNight
+    ? ['#2c3e50', '#4ca1af']
+    : ['#56ab2f', '#a8e063'];
+
+  const conditionText = weather?.condition || "--";
+  const tempText = weather?.temp || "--";
+  const rangeText = weather?.tempRange || "--";
+  const iconName = getWeatherIcon(conditionText, isNight);
+
+  if (error) {
+    return (
+      <Card style={styles.card} mode="elevated">
+        <LinearGradient
+          colors={['#e57373', '#ef5350']} // Rojo suave para error
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradient}
+        >
+          <View style={styles.content}>
+            <View style={styles.textContainer}>
+              <Text variant="titleMedium" style={styles.titleText}>
+                Clima no disponible
+              </Text>
+              <Text variant="bodySmall" style={styles.conditionText}>
+                Verifica tu conexión
+              </Text>
+              {onRetry && (
+                <TouchableOpacity onPress={onRetry} style={styles.retryButton}>
+                  <Text style={styles.retryText}>Reintentar</Text>
+                  <Icon name="refresh" size={16} color="white" style={{marginLeft: 4}} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={styles.weatherInfo}>
+              <Icon name="wifi-off" size={40} color="#fff" />
+            </View>
+          </View>
+        </LinearGradient>
+      </Card>
+    );
+  }
 
   return (
-    // 2. Usamos el color 'surface' del tema para el fondo de la Card
-    <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-      <Card.Content style={styles.content}>
-        {/* Columna Izquierda: Icono y Temperatura Actual */}
-        <View style={styles.weatherInfo}>
-          {/* 3. Usamos el color primario del tema para el icono */}
-          <Icon name={weatherIcon} size={50} color={theme.colors.primary} />
-          {/* 4. Usamos el color primario para la temperatura */}
-          <Text style={[styles.temp, { color: theme.colors.primary }]}>{weather.temp}°C</Text>
-        </View>
+    <Card style={styles.card} mode="elevated">
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
+      >
+        <View style={styles.content}>
+          <View style={styles.textContainer}>
+            {loading ? (
+              <>
+                <Skeleton width={150} height={24} style={{ marginBottom: 8 }} />
+                <Skeleton width={100} height={16} style={{ marginBottom: 8 }} />
+                <Skeleton width={80} height={16} />
+              </>
+            ) : (
+              <>
+                <Text variant="titleLarge" style={styles.titleText}>
+                  {isNight ? "Buenas noches" : "¡Hola, a caminar!"}
+                </Text>
+                <Text variant="bodyLarge" style={styles.conditionText}>
+                  {conditionText}
+                </Text>
+                <Text variant="bodyMedium" style={styles.rangeText}>
+                  Mín/Máx: {rangeText}
+                </Text>
+              </>
+            )}
+          </View>
 
-        {/* Columna Derecha: Textos */}
-        <View style={styles.textContainer}>
-          <Text variant="titleLarge" style={styles.title}>
-            {isNight ? "¡Noche tranquila!" : "¡Día perfecto para CaminAR!"}
-          </Text>
-          {/* 5. Usamos onSurfaceVariant para textos secundarios */}
-          <Text style={[styles.condition, { color: theme.colors.onSurfaceVariant }]}>{weather.condition}</Text>
-          {/* Mostramos el rango de temperatura */}
-          <Text style={[styles.tempRange, { color: theme.colors.onSurfaceVariant }]}>Min/Max: {weather.tempRange}</Text>
+          <View style={styles.weatherInfo}>
+            {loading ? (
+              <Skeleton width={60} height={60} style={{ borderRadius: 30 }} />
+            ) : (
+              <>
+                <Icon name={iconName} size={48} color="#fff" />
+                <Text style={styles.tempText}>{tempText}°</Text>
+              </>
+            )}
+          </View>
         </View>
-      </Card.Content>
+      </LinearGradient>
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 24,
-    elevation: 3, // Sombra sutil
+    borderRadius: 20,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  gradient: {
+    padding: 20,
   },
   content: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-  },
-  weatherInfo: {
-    alignItems: 'center',
-    marginRight: 20,
-    minWidth: 60, // Ancho mínimo para alinear
-  },
-  temp: {
-    fontSize: 24, // Temperatura más grande
-    fontWeight: 'bold',
-    marginTop: 8,
   },
   textContainer: {
     flex: 1,
-    justifyContent: 'center', // Centrar verticalmente los textos
+    justifyContent: 'center',
   },
-  title: {
+  titleText: {
+    color: '#fff',
     fontWeight: 'bold',
-    marginBottom: 4, // Espacio después del título
+    marginBottom: 4,
   },
-  condition: {
-    fontSize: 16, // Condición un poco más grande
-    marginBottom: 4, // Espacio antes del rango
-    textTransform: 'capitalize', // Primera letra mayúscula
+  conditionText: {
+    color: '#fff',
+    opacity: 0.9,
+    marginBottom: 2,
+    textTransform: 'capitalize',
+    fontSize: 18,
   },
-   tempRange: {
-      fontSize: 14,
-      marginBottom: 8, // Espacio antes de la racha
-   },
-  subtitle: {
-    fontSize: 14, // Racha un poco más pequeña
+  rangeText: {
+    color: '#fff',
+    opacity: 0.8,
   },
+  weatherInfo: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 16,
+  },
+  tempText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#fff',
+    lineHeight: 40,
+  },
+  retryButton: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  retryText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 12,
+  }
 });

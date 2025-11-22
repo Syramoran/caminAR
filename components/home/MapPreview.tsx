@@ -1,149 +1,147 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { Card, Text, useTheme } from 'react-native-paper';
+import { StyleSheet, View, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { Text, useTheme, Button } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import MapView, { Marker, Region } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Usar provider google si es posible
 import * as Location from 'expo-location';
-
-// 1. Importar useUser y Reto
-import { useUser, Reto } from '../../context/UserContext';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useUser } from '../../context/UserContext';
 
 export default function MapPreview() {
   const theme = useTheme();
   const router = useRouter();
-  const [region, setRegion] = useState<Region | null>(null);
-  // 2. Obtener retos del contexto
+  const [region, setRegion] = useState<any>(null);
   const { challenges, loadingChallenges } = useUser();
 
   useEffect(() => {
     (async () => {
-      console.log("LOG: [MapPreview] Solicitando permiso de ubicación...");
-      let { status } = await Location.requestForegroundPermissionsAsync();
-
-      let currentRegion: Region;
-
-      if (status !== 'granted') {
-        console.warn('LOG: [MapPreview] Permiso de ubicación denegado, usando ubicación por defecto.');
-        // Alert.alert("Permiso Denegado", "No se pudo acceder a tu ubicación. Mostrando mapa centrado en Concordia.");
-        currentRegion = {
-          latitude: -31.394, // Concordia, Entre Ríos
-          longitude: -58.018,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        };
-      } else {
-        console.log("LOG: [MapPreview] Permiso concedido. Obteniendo ubicación actual...");
-        try {
-          const location = await Location.getCurrentPositionAsync({});
-          currentRegion = {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
-          };
-          console.log(`LOG: [MapPreview] Ubicación obtenida: ${currentRegion.latitude}, ${currentRegion.longitude}`);
-        } catch (error) {
-          console.error("LOG: [MapPreview] Error al obtener ubicación:", error);
-           Alert.alert("Error de Ubicación", "No se pudo obtener tu ubicación actual. Mostrando ubicación por defecto.");
-          currentRegion = { // Fallback a Concordia
-            latitude: -31.394,
-            longitude: -58.018,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
-          };
-        }
-      }
-      setRegion(currentRegion);
+      // Permisos ya se manejan en el index, aquí intentamos obtener rápido
+      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
     })();
   }, []);
 
-  // 3. Filtrar retos con ubicación válida
-  const challengesWithLocation = challenges.filter(c => c.latitud != null && c.longitud != null);
-  console.log(`LOG: [MapPreview] Número de retos con ubicación: ${challengesWithLocation.length}`);
-
-  // Función para determinar el color del marcador (ejemplo)
-   const getPinColor = (challenge: Reto) => {
-     if (challenge.puntos_otorgados >= 200) return theme.colors.error; // Rojo para retos difíciles
-     if (challenge.puntos_otorgados >= 100) return theme.colors.primary; // Verde para normales
-     return theme.colors.secondary; // Lima para fáciles
-   };
-
+  const challengesWithLocation = challenges.filter(c => c.latitud && c.longitud).slice(0, 5);
 
   return (
-    <TouchableOpacity onPress={() => router.push('/mapa')} activeOpacity={0.7}>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text variant="titleLarge" style={styles.title}>Mapa Interactivo</Text>
-          <Text style={styles.subtitle}>Explora rutas y puntos de interés cerca de ti</Text>
-          <View style={styles.mapContainer}>
-            {/* 6. Mostrar carga si la región O los retos no están listos */}
-            {!region || loadingChallenges ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator animating={true} color={theme.colors.primary}/>
-                <Text style={{marginTop: 8, color: theme.colors.backdrop}}>
-                  { !region ? "Obteniendo ubicación..." : "Cargando retos..."}
+    <View style={styles.container}>
+      <View style={styles.mapWrapper}>
+        {region ? (
+          <MapView
+            style={styles.map}
+            initialRegion={region}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            pitchEnabled={false}
+            rotateEnabled={false}
+            pointerEvents="none" // Desactivar interacción directa para que el toque vaya al contenedor
+          >
+             {/* Marcador Usuario */}
+             <Marker coordinate={region}>
+                <View style={[styles.userMarker, { backgroundColor: theme.colors.primary }]}>
+                   <View style={styles.userMarkerInner} />
+                </View>
+             </Marker>
+
+             {/* Marcadores Retos (Pequeños puntos) */}
+             {challengesWithLocation.map(c => (
+               <Marker
+                 key={c.id}
+                 coordinate={{ latitude: c.latitud!, longitude: c.longitud! }}
+               >
+                 <Icon name="map-marker" size={24} color={theme.colors.tertiary} />
+               </Marker>
+             ))}
+          </MapView>
+        ) : (
+          <View style={[styles.placeholder, { backgroundColor: theme.colors.surfaceVariant }]}>
+             <ActivityIndicator color={theme.colors.primary} />
+          </View>
+        )}
+
+        {/* Overlay Gradiante o Sombra para texto */}
+        <View style={styles.overlay}>
+           <View style={styles.overlayContent}>
+              <View>
+                <Text variant="titleMedium" style={{ fontWeight: 'bold', color: '#fff' }}>Mapa Interactivo</Text>
+                <Text variant="bodySmall" style={{ color: '#f0f0f0' }}>
+                  {challengesWithLocation.length} retos cerca de ti
                 </Text>
               </View>
-            ) : (
-              <MapView
-                style={styles.map}
-                initialRegion={region}
-                pitchEnabled={false}
-                rotateEnabled={false}
-                scrollEnabled={false}
-                zoomEnabled={false}
+              <TouchableOpacity
+                style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+                onPress={() => router.push('/mapa')}
               >
-                {/* Marcador para la ubicación actual del usuario (opcional) */}
-                <Marker
-                    coordinate={{ latitude: region.latitude, longitude: region.longitude }}
-                    title="Tu ubicación"
-                    pinColor="blue" // Un color distintivo para el usuario
-                />
-
-                {/* 4. Mapear retos con ubicación para crear Markers */}
-                {challengesWithLocation.map((challenge) => (
-                  <Marker
-                    key={challenge.id}
-                    coordinate={{ latitude: challenge.latitud!, longitude: challenge.longitud! }}
-                    title={challenge.titulo}
-                    description={`${challenge.puntos_otorgados} pts`} // Descripción corta
-                    pinColor={getPinColor(challenge)} // Color primario del tema
-                  />
-                ))}
-              </MapView>
-            )}
-          </View>
-        </Card.Content>
-      </Card>
-    </TouchableOpacity>
+                 <Icon name="arrow-right" size={24} color="white" />
+              </TouchableOpacity>
+           </View>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    marginBottom: 24,
-    backgroundColor: 'white',
-    elevation: 2, // Sombra sutil
-  },
-  title: {
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    marginBottom: 16,
-    color: '#666',
-  },
-  mapContainer: {
-    height: 200,
-    borderRadius: 12,
+  container: {
+    borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#e0e0e0',
+    elevation: 4,
+    backgroundColor: 'white',
+    height: 180,
   },
-  loadingContainer: {
+  mapWrapper: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: 'relative',
   },
   map: {
     ...StyleSheet.absoluteFillObject,
   },
+  placeholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userMarker: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userMarkerInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'white',
+  },
+  overlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+    backgroundColor: 'rgba(0,0,0,0.4)', // Semi-transparente oscuro
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  overlayContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fab: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+  }
 });

@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, View, StatusBar, TouchableOpacity, Dimensions, Alert, Image, ActivityIndicator as RNActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, View, StatusBar, TouchableOpacity, Dimensions, Image, ActivityIndicator as RNActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// *** Importar TextInput de react-native-paper ***
-import { Text, useTheme, ActivityIndicator, Card, Chip, Modal, Portal, Button, IconButton, TextInput } from 'react-native-paper';
+import { Text, useTheme, Modal, Portal, Button, IconButton, TextInput, Surface } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
-// *** Obtener completedChallengeIds y loadingCompletedChallenges ***
+import { LinearGradient } from 'expo-linear-gradient';
 import { useUser, Reto } from '../../context/UserContext';
 import { useAuth } from '../../context/AuthContext';
 import ViewShot from 'react-native-view-shot';
@@ -13,375 +12,511 @@ import * as Sharing from 'expo-sharing';
 
 const screenHeight = Dimensions.get('window').height;
 
-// --- Componente de Tarjeta de Reto ---
-// *** Añadir prop isCompleted y estilo visual ***
+// --- Componente Skeleton para Carga ---
+const ChallengeSkeleton = () => (
+  <View style={styles.skeletonCard}>
+    <View style={styles.skeletonImage} />
+    <View style={styles.skeletonContent}>
+      <View style={styles.skeletonTitle} />
+      <View style={styles.skeletonText} />
+    </View>
+  </View>
+);
+
+// --- Tarjeta de Reto Moderna ---
 const RetoCard = ({ reto, onPress, isCompleted }: { reto: Reto, onPress: () => void, isCompleted: boolean }) => {
   const theme = useTheme();
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={isCompleted ? 1 : 0.8} disabled={isCompleted}>
-      <Card style={[styles.summaryCard, { backgroundColor: theme.colors.surface }, isCompleted && styles.completedCard]} mode="elevated">
-        <View style={isCompleted && styles.completedOverlay} />
-        {isCompleted && <Icon name="check-decagram" size={40} color={theme.colors.primary} style={styles.completedIcon} />}
-        <Card.Cover source={{ uri: `https://picsum.photos/seed/${reto.id}/700/400` }} style={isCompleted && styles.completedImage} />
-        <Card.Content style={styles.summaryCardContent}>
-          <View style={styles.summaryTextContainer}>
-            <Text variant="titleLarge" style={styles.summaryTitle}>{reto.titulo}</Text>
-            <Text variant="bodyMedium" style={{ color: isCompleted ? theme.colors.backdrop : theme.colors.onSurfaceVariant }} numberOfLines={2}>
-              {reto.descripcion}
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.9}
+      style={styles.cardContainer}
+    >
+      <Surface style={styles.card} elevation={2}>
+        {/* Imagen de portada con Badge de Puntos */}
+        <View style={styles.imageContainer}>
+          <Image
+            // Usamos 800/600 para simular 4:3 en los placeholders
+            source={{ uri: `https://picsum.photos/seed/${reto.id}/800/600` }}
+            style={styles.cardImage}
+          />
+          {/* Gradiente sutil en la parte inferior de la imagen para leer texto si lo hubiera */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.3)']}
+            style={styles.imageGradient}
+          />
+
+          <View style={[styles.pointsBadge, { backgroundColor: theme.colors.primaryContainer }]}>
+            <Icon name="star" size={14} color={theme.colors.onPrimaryContainer} />
+            <Text style={[styles.pointsText, { color: theme.colors.onPrimaryContainer }]}>
+              +{reto.puntos_otorgados}
             </Text>
           </View>
-          <View style={styles.chipContainer}>
-            <Chip
-              icon="star"
-              style={[styles.summaryChip, { backgroundColor: isCompleted ? theme.colors.surfaceVariant : theme.colors.secondaryContainer }]}
-              textStyle={[styles.summaryChipText, { color: isCompleted ? theme.colors.onSurfaceVariant : theme.colors.primary }]}
-            >
-              +{reto.puntos_otorgados} pts
-            </Chip>
-            {reto.latitud && reto.longitud && (
-                 <Chip
-                   icon="map-marker"
-                   style={[styles.summaryChip, { backgroundColor: isCompleted ? theme.colors.surfaceVariant : theme.colors.tertiaryContainer, marginLeft: 5 }]}
-                   textStyle={[styles.summaryChipText, { color: isCompleted ? theme.colors.onSurfaceVariant : theme.colors.onTertiaryContainer, fontSize: 11 }]}
-                 >
-                   Mapa
-                 </Chip>
+
+          {isCompleted && (
+            <View style={styles.completedOverlay}>
+              <View style={styles.completedBadge}>
+                <Icon name="check" size={20} color="white" />
+                <Text style={styles.completedText}>Completado</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Contenido de la tarjeta */}
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeaderRow}>
+            <Text variant="titleMedium" style={styles.cardTitle} numberOfLines={1}>{reto.titulo}</Text>
+            {reto.latitud && (
+               <Icon name="map-marker" size={18} color={theme.colors.tertiary} />
             )}
           </View>
-        </Card.Content>
-      </Card>
+          <Text variant="bodySmall" style={[styles.cardDesc, { color: theme.colors.onSurfaceVariant }]} numberOfLines={2}>
+            {reto.descripcion}
+          </Text>
+        </View>
+      </Surface>
     </TouchableOpacity>
   );
 };
 
-// --- Pantalla Principal de Retos ---
 export default function RetosScreen() {
-  // *** Obtener completedChallengeIds y loadingCompletedChallenges ***
   const { challenges, loadingChallenges, completeChallenge, completedChallengeIds, loadingCompletedChallenges } = useUser();
   const { user } = useAuth();
   const theme = useTheme();
+
   const [selectedReto, setSelectedReto] = useState<Reto | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
-  // *** Añadir estado para descripción ***
   const [description, setDescription] = useState('');
   const [isCompleting, setIsCompleting] = useState(false);
+
   const shot = useRef<ViewShot>(null);
 
-  useEffect(() => {
-    console.log("LOG: [RetosScreen] Estado inicializado.");
-  }, []);
-
-  // *** Modificar log para incluir estado de completados ***
-  useEffect(() => {
-    console.log("LOG: [RetosScreen] Actualización de estado:", { loadingChallenges, challengeCount: challenges?.length, loadingCompleted: loadingCompletedChallenges, completedCount: completedChallengeIds?.size });
-  }, [loadingChallenges, challenges, loadingCompletedChallenges, completedChallengeIds]);
+  // --- Acciones ---
 
   const showModal = (reto: Reto) => {
-    // *** Verificar si ya está completado antes de abrir ***
-    if (completedChallengeIds.has(reto.id)) {
-        Alert.alert("Reto Completado", "Ya has completado este reto anteriormente.");
-        return;
-    }
-    console.log(`LOG: [RetosScreen] Abriendo modal para el reto: "${reto.titulo}"`);
     setSelectedReto(reto);
     setIsModalVisible(true);
     setPhoto(null);
-    setDescription(''); // Limpiar descripción
+    setDescription('');
     setIsCompleting(false);
   };
 
   const hideModal = () => {
     if (!isCompleting) {
-        console.log("LOG: [RetosScreen] Cerrando modal.");
         setIsModalVisible(false);
-        setSelectedReto(null);
-        setPhoto(null);
-        setDescription(''); // Limpiar descripción
+        // Pequeño delay para limpiar estado visual
+        setTimeout(() => {
+            setSelectedReto(null);
+            setPhoto(null);
+        }, 300);
     }
   };
 
-  const handleComenzarReto = () => {
-    if (!selectedReto) return;
-    console.log(`LOG: [RetosScreen] El usuario ha comenzado el reto: "${selectedReto.titulo}"`);
-    Alert.alert("¡Reto iniciado!", `Ahora puedes completar "${selectedReto.titulo}". Busca la opción al finalizar.`);
-    hideModal();
-  };
-
-  // handleTomarFotoEvidencia (sin cambios)
-  const handleTomarFotoEvidencia = async () => {
-    if (!selectedReto) return;
-    console.log(`LOG: [RetosScreen] Tomando foto para el reto: "${selectedReto.titulo}"`);
+  const handleTomarFoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso denegado', 'Necesitamos acceso a tu cámara para verificar el reto.');
+      Alert.alert('Permiso denegado', 'Necesitamos acceso a tu cámara.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [4, 3],
+      aspect: [4, 3], // Mantenemos 4:3 para la cámara
       quality: 0.7,
-      base64: false,
     });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      console.log("LOG: [RetosScreen] Foto tomada, URI:", result.assets[0].uri);
+    if (!result.canceled && result.assets.length > 0) {
       setPhoto(result.assets[0].uri);
-    } else {
-      console.log("LOG: [RetosScreen] El usuario canceló la captura de foto.");
     }
   };
 
-  // handleConfirmarEvidencia (modificado para pasar descripción)
-  const handleConfirmarEvidencia = async () => {
-     if (!selectedReto || !photo || !user) {
-         Alert.alert("Error", "Faltan datos para completar el reto.");
-         return;
-     }
+  const handleConfirmar = async () => {
+     if (!selectedReto || !photo || !user) return;
      setIsCompleting(true);
      try {
-         console.log(`[RetosScreen] Confirmando evidencia para reto ${selectedReto.id} con foto ${photo} y descripción "${description}"`);
-         // *** Pasar descripción a completeChallenge ***
          const result = await completeChallenge(selectedReto, photo, description);
-
          if (result.success) {
-             Alert.alert(
-                 "¡Reto Completado!",
-                 `Has ganado ${selectedReto.puntos_otorgados} puntos por completar "${selectedReto.titulo}".`
-             );
-             // No cerramos modal para compartir, pero podríamos resetear descripción
-             // setDescription('');
+             Alert.alert("¡Fantástico!", `Has ganado ${selectedReto.puntos_otorgados} puntos.`);
+             // No cerramos modal inmediatamente si queremos que compartan, o podemos cerrarlo:
+             // hideModal();
          } else {
-             // *** Mostrar mensaje de error si existe ***
-             Alert.alert("Error al completar", result.message || "No se pudo completar el reto.");
+             Alert.alert("Ups", result.message || "Error al completar.");
          }
      } catch (error: any) {
-         console.error("[RetosScreen] Error en handleConfirmarEvidencia:", error);
-         Alert.alert("Error Inesperado", `Ocurrió un problema: ${error.message}`);
+         Alert.alert("Error", error.message);
      } finally {
          setIsCompleting(false);
      }
   };
 
-
-  // shareImage (sin cambios)
-  const shareImage = async () => {
-    if (!photo) {
-        Alert.alert("Error", "Primero debes completar el reto con una foto.");
-        return;
-    }
+  const handleShare = async () => {
+    if (!shot.current) return;
     try {
-      if (shot.current) {
-        const localUri = await shot.current.capture?.(); // Captura la vista del modal
-        if (localUri) {
-          console.log("LOG: [RetosScreen] Compartiendo imagen capturada:", localUri);
-          await Sharing.shareAsync(localUri, {
-             dialogTitle: `¡Completé el reto "${selectedReto?.titulo}" en CaminAR!`
-            });
-        } else {
-             throw new Error("No se pudo capturar la vista.");
+        const uri = await shot.current.capture?.();
+        if (uri) {
+            await Sharing.shareAsync(uri);
         }
-      } else {
-         throw new Error("Referencia a ViewShot no encontrada.");
-      }
-    } catch (error: any) {
-      console.error("LOG: [RetosScreen] Error al compartir la imagen:", error);
-      Alert.alert("Error", `No se pudo compartir la imagen: ${error.message}`);
+    } catch (e) {
+        console.log(e);
     }
   };
 
-  const renderContent = () => {
-    // *** Incluir loadingCompletedChallenges en la condición de carga ***
-    if (loadingChallenges || loadingCompletedChallenges) {
-      return (
-        <View style={styles.centeredContainer}>
-          <ActivityIndicator animating={true} color={theme.colors.primary} size="large" />
-          <Text style={[styles.infoText, { color: theme.colors.onSurfaceVariant }]}>Cargando datos...</Text>
-        </View>
-      );
-    }
+  // --- Renderizado ---
 
-    if (!challenges || challenges.length === 0) {
-      return (
-        <View style={styles.centeredContainer}>
-          <Icon name="leaf-off" size={48} color={theme.colors.onSurfaceVariant} />
-          <Text style={[styles.infoText, { color: theme.colors.onSurfaceVariant }]}>No hay desafíos disponibles.</Text>
-        </View>
-      );
-    }
-
-    // *** Separar retos completados de no completados para mostrarlos diferentemente si se desea, o pasar prop a RetoCard ***
-    const sortedChallenges = [...challenges].sort((a, b) => {
-        const aCompleted = completedChallengeIds.has(a.id);
-        const bCompleted = completedChallengeIds.has(b.id);
-        if (aCompleted && !bCompleted) return 1; // Completados al final
-        if (!aCompleted && bCompleted) return -1; // No completados al principio
-        return 0; // Mantener orden original entre ellos
-    });
-
-
-    return sortedChallenges.map((reto) => (
-      <RetoCard
-        key={reto.id}
-        reto={reto}
-        onPress={() => showModal(reto)}
-        // *** Pasar si está completado ***
-        isCompleted={completedChallengeIds.has(reto.id)}
-      />
-    ));
-  };
+  const isLoading = loadingChallenges || loadingCompletedChallenges;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.primary }]} edges={['top']}>
-      <StatusBar barStyle="light-content" />
-      <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-        <Text variant="headlineMedium" style={styles.headerTitle}>Desafíos Ecológicos</Text>
-        <Text variant="bodyLarge" style={styles.headerSubtitle}>Toca un desafío para ver los detalles</Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Configuración de StatusBar para consistencia */}
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
 
-      <View style={[styles.mainContent, { backgroundColor: theme.colors.background }]}>
-        <ScrollView contentContainerStyle={styles.container}>
-          {renderContent()}
-        </ScrollView>
-      </View>
+      {/* Header Simple y Limpio */}
+      <SafeAreaView edges={['top']} style={{ backgroundColor: theme.colors.surface, elevation: 2, zIndex: 1 }}>
+        <View style={styles.header}>
+            <Text variant="headlineMedium" style={styles.headerTitle}>Desafíos</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.outline }}>
+                Supera retos y gana puntos eco
+            </Text>
+        </View>
+      </SafeAreaView>
 
-      {/* --- Modal Mejorado con TextInput --- */}
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        {isLoading ? (
+            // Mostrar 3 esqueletos mientras carga
+            <>
+                <ChallengeSkeleton />
+                <ChallengeSkeleton />
+                <ChallengeSkeleton />
+            </>
+        ) : challenges.length === 0 ? (
+            <View style={styles.emptyContainer}>
+                <Icon name="trophy-broken" size={60} color={theme.colors.outline} />
+                <Text style={{ marginTop: 10, color: theme.colors.outline }}>No hay desafíos disponibles.</Text>
+            </View>
+        ) : (
+            // Ordenar: No completados primero
+            [...challenges]
+                .sort((a, b) => {
+                    const aComp = completedChallengeIds.has(a.id);
+                    const bComp = completedChallengeIds.has(b.id);
+                    return aComp === bComp ? 0 : aComp ? 1 : -1;
+                })
+                .map((reto) => (
+                    <RetoCard
+                        key={reto.id}
+                        reto={reto}
+                        onPress={() => showModal(reto)}
+                        isCompleted={completedChallengeIds.has(reto.id)}
+                    />
+                ))
+        )}
+      </ScrollView>
+
+      {/* --- Modal de Detalle --- */}
       <Portal>
         <Modal
           visible={isModalVisible}
           onDismiss={hideModal}
-          contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}
+          contentContainerStyle={styles.modalContainer}
         >
-          <ViewShot ref={shot} options={{ format: 'png', quality: 0.9 }}>
-            <ScrollView style={styles.modalScrollView}>
-              {selectedReto && (
-                <View style={{backgroundColor: theme.colors.surface }}>
-                  <Card.Cover source={{ uri: `https://picsum.photos/seed/${selectedReto.id}/700/400` }} />
-                  <Card.Content style={styles.modalCardContent}>
-                    <Text variant="headlineSmall" style={styles.modalTitle}>{selectedReto.titulo}</Text>
-                    <Chip
-                      icon="star"
-                      style={[styles.summaryChip, { backgroundColor: theme.colors.secondaryContainer, alignSelf: 'flex-start' }]}
-                      textStyle={[styles.summaryChipText, { color: theme.colors.primary }]}
-                    >
-                      +{selectedReto.puntos_otorgados} puntos
-                    </Chip>
-                    <Text variant="bodyLarge" style={styles.modalDescription}>{selectedReto.descripcion}</Text>
+            {/* Botón Cerrar Flotante */}
+            <TouchableOpacity style={styles.closeButton} onPress={hideModal} disabled={isCompleting}>
+                <Icon name="close" size={20} color="#333" />
+            </TouchableOpacity>
 
-                    {/* Previsualización y TextInput para descripción */}
-                    {photo && !isCompleting && (
-                      <View>
-                        <Text style={styles.previewLabel}>Tu Evidencia:</Text>
-                        <Image source={{ uri: photo }} style={styles.previewImage} />
-                        {/* *** TextInput para descripción *** */}
-                        <TextInput
-                            label="Añadir comentario (opcional)"
-                            value={description}
-                            onChangeText={setDescription}
-                            mode="outlined"
-                            style={styles.descriptionInput}
-                            multiline
-                            numberOfLines={3}
-                            disabled={isCompleting} // Deshabilitar mientras carga
-                        />
-                      </View>
+            <ViewShot ref={shot} options={{ format: 'jpg', quality: 0.9 }} style={{backgroundColor: 'white'}}>
+                <ScrollView>
+                    {selectedReto && (
+                        <>
+                            <Image
+                                // Placeholder también en 4:3
+                                source={{ uri: photo || `https://picsum.photos/seed/${selectedReto.id}/800/600` }}
+                                style={styles.modalImage}
+                            />
+                            <View style={styles.modalContent}>
+                                <View style={styles.modalHeaderRow}>
+                                    <Text variant="headlineSmall" style={styles.modalTitle}>{selectedReto.titulo}</Text>
+                                    <View style={[styles.pointsBadge, { backgroundColor: theme.colors.secondaryContainer, top: 0, right: 0, position: 'relative' }]}>
+                                        <Text style={{ color: theme.colors.onSecondaryContainer, fontWeight: 'bold' }}>
+                                            +{selectedReto.puntos_otorgados}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <Text style={[styles.modalDesc, { color: theme.colors.onSurfaceVariant }]}>
+                                    {selectedReto.descripcion}
+                                </Text>
+
+                                {completedChallengeIds.has(selectedReto.id) ? (
+                                    <Surface style={styles.completedBanner} elevation={0}>
+                                        <Icon name="trophy" size={24} color={theme.colors.primary} />
+                                        <Text style={{ marginLeft: 10, color: theme.colors.primary, fontWeight: 'bold' }}>
+                                            ¡Desafío Completado!
+                                        </Text>
+                                    </Surface>
+                                ) : (
+                                    <>
+                                        {/* Input condicional si hay foto */}
+                                        {photo && !isCompleting && (
+                                            <TextInput
+                                                label="Comentario (opcional)"
+                                                value={description}
+                                                onChangeText={setDescription}
+                                                mode="outlined"
+                                                style={{ marginVertical: 10, backgroundColor: 'white' }}
+                                                multiline
+                                            />
+                                        )}
+                                    </>
+                                )}
+                            </View>
+                        </>
                     )}
+                </ScrollView>
+            </ViewShot>
 
-                     {isCompleting && (
-                         <View style={styles.loadingModalContent}>
-                             <RNActivityIndicator size="large" color={theme.colors.primary} />
-                             <Text style={{marginTop: 10}}>Completando reto...</Text>
-                         </View>
-                     )}
-
-                  </Card.Content>
+            {/* Footer de Acciones */}
+            {selectedReto && !completedChallengeIds.has(selectedReto.id) && (
+                <View style={styles.modalFooter}>
+                    {isCompleting ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10 }}>
+                            <RNActivityIndicator color={theme.colors.primary} style={{ marginRight: 10 }} />
+                            <Text>Validando...</Text>
+                        </View>
+                    ) : !photo ? (
+                        <Button
+                            mode="contained"
+                            onPress={handleTomarFoto}
+                            icon="camera"
+                            style={styles.actionBtn}
+                            contentStyle={{ height: 50 }}
+                        >
+                            Tomar Evidencia
+                        </Button>
+                    ) : (
+                        <View style={styles.confirmActions}>
+                            <Button onPress={() => setPhoto(null)} style={{ flex: 1, marginRight: 8 }}>Reintentar</Button>
+                            <Button
+                                mode="contained"
+                                onPress={handleConfirmar}
+                                style={{ flex: 2 }}
+                                contentStyle={{ height: 50 }}
+                            >
+                                Confirmar
+                            </Button>
+                        </View>
+                    )}
                 </View>
-              )}
-            </ScrollView>
-          </ViewShot>
+            )}
 
-          {/* Acciones del Modal */}
-          <View style={styles.modalActions}>
-             {!photo && !isCompleting && (
-                 <>
-                    {/* Botón Comenzar ahora es menos prominente o se puede quitar */}
-                    {/* <Button onPress={handleComenzarReto} mode="outlined" style={styles.modalButton}>Marcar como iniciado</Button> */}
-                    <Button onPress={handleTomarFotoEvidencia} mode="contained" icon="camera" style={styles.modalButton}>Tomar Foto Evidencia</Button>
-                 </>
-             )}
-             {photo && !isCompleting && (
-                 <>
-                    <Button onPress={handleConfirmarEvidencia} mode="contained" icon="check-circle" style={styles.modalButton} loading={isCompleting} disabled={isCompleting}>Confirmar Evidencia</Button>
-                    <Button onPress={shareImage} mode="outlined" icon="share-variant" style={styles.modalButton} disabled={isCompleting}>Compartir Logro</Button>
-                 </>
-             )}
-             {/* Mostrar un estado diferente mientras carga */}
-              {isCompleting && (
-                  <Text style={{textAlign: 'center', paddingVertical: 10}}>Procesando...</Text>
-              )}
-          </View>
-
-          <IconButton
-            icon="close-circle"
-            size={30}
-            onPress={hideModal}
-            style={styles.modalCloseIcon}
-            iconColor={theme.colors.onSurface}
-            disabled={isCompleting}
-          />
+            {/* Footer si está completado (Compartir) */}
+            {selectedReto && completedChallengeIds.has(selectedReto.id) && (
+                 <View style={styles.modalFooter}>
+                    <Button
+                        mode="outlined"
+                        onPress={handleShare}
+                        icon="share-variant"
+                        style={styles.actionBtn}
+                    >
+                        Compartir Logro
+                    </Button>
+                 </View>
+            )}
         </Modal>
       </Portal>
-    </SafeAreaView>
+    </View>
   );
 }
 
-// --- Estilos ---
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  header: { paddingHorizontal: 24, paddingBottom: 24, paddingTop: 16 },
-  headerTitle: { fontWeight: 'bold', color: 'white' },
-  headerSubtitle: { marginTop: 4, color: 'white', opacity: 0.9 },
-  mainContent: { flex: 1 },
-  container: { padding: 16, paddingBottom: 48, flexGrow: 1 },
-  centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, minHeight: screenHeight * 0.6 },
-  infoText: { marginTop: 20, fontSize: 16, textAlign: 'center' },
-  summaryCard: { marginBottom: 20, overflow: 'hidden' }, // Needed for overlay/icon positioning
-  summaryCardContent: { padding: 12 },
-  summaryTextContainer: { marginBottom: 12 },
-  summaryTitle: { fontWeight: 'bold', marginBottom: 4 },
-  chipContainer: { flexDirection: 'row', justifyContent: 'flex-start', flexWrap: 'wrap', alignItems: 'center' },
-  summaryChip: { paddingHorizontal: 4, height: 28, alignItems: 'center', justifyContent: 'center', marginRight: 5, marginBottom: 5 },
-  summaryChipText: { fontSize: 12, fontWeight: 'bold' },
-  modalContainer: { margin: 20, borderRadius: 15, maxHeight: '90%', overflow: 'hidden' },
-  modalScrollView: { maxHeight: screenHeight * 0.65 },
-  modalCardContent: { padding: 20, paddingBottom: 0 },
-  modalTitle: { fontWeight: 'bold', marginBottom: 12 },
-  modalDescription: { marginTop: 16, lineHeight: 24, fontSize: 16, marginBottom: 20 },
-  modalActions: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 15, paddingHorizontal: 10, borderTopWidth: 1, borderColor: '#eee', backgroundColor: 'white' },
-  modalButton: { flex: 1, marginHorizontal: 5 },
-  modalCloseIcon: { position: 'absolute', top: 5, right: 5, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 15 },
-  previewLabel: { fontSize: 14, fontWeight: 'bold', marginTop: 15, marginBottom: 5, color: '#555' },
-  previewImage: { width: '100%', height: 180, borderRadius: 12, resizeMode: 'cover', borderWidth: 1, borderColor: '#ddd' },
-  descriptionInput: { marginTop: 15, marginBottom: 20 }, // Estilo para el input de descripción
-  loadingModalContent: { justifyContent: 'center', alignItems: 'center', paddingVertical: 40 },
-  // *** Estilos para retos completados ***
-  completedCard: {
-    // backgroundColor: '#e0e0e0', // Un fondo gris claro
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    paddingTop: 10,
+  },
+  headerTitle: {
+    fontWeight: 'bold',
+  },
+  scrollContainer: {
+    padding: 16,
+    paddingBottom: 80,
+  },
+  // --- Estilos Tarjeta ---
+  cardContainer: {
+    marginBottom: 16,
+  },
+  card: {
+    borderRadius: 16,
+    backgroundColor: 'white',
+    overflow: 'hidden', // Para que la imagen respete el borde
+  },
+  imageContainer: {
+    height: 160,
+    width: '100%',
+    position: 'relative',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  imageGradient: {
+    position: 'absolute',
+    left: 0, right: 0, bottom: 0,
+    height: 60,
+  },
+  pointsBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 4,
+  },
+  pointsText: {
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   completedOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)', // Un overlay semitransparente
-    zIndex: 1, // Asegura que esté sobre la imagen
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-   completedIcon: {
-      position: 'absolute',
-      top: 10,
-      right: 10,
-      zIndex: 2, // Encima del overlay
-   },
-  completedImage: {
-    // opacity: 0.6, // Hacer la imagen un poco transparente
+  completedBadge: {
+    backgroundColor: '#4CAF50',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 25,
+    gap: 8,
   },
+  completedText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  cardContent: {
+    padding: 16,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  cardTitle: {
+    fontWeight: 'bold',
+    flex: 1,
+    marginRight: 10,
+  },
+  cardDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  // --- Estilos Modal ---
+  modalContainer: {
+    backgroundColor: 'white',
+    margin: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    maxHeight: '85%',
+  },
+  modalImage: {
+    width: '100%',
+    aspectRatio: 4 / 3, // Relación de aspecto 4:3 forzada
+    resizeMode: 'cover',
+  },
+  modalContent: {
+    padding: 24,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    flex: 1,
+    marginRight: 16,
+  },
+  modalDesc: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  modalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderColor: '#eee',
+    backgroundColor: 'white',
+  },
+  actionBtn: {
+    borderRadius: 12,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 15,
+    left: 15,
+    zIndex: 10,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+  },
+  completedBanner: {
+    backgroundColor: '#E8F5E9',
+    padding: 15,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  // --- Estilos Skeleton ---
+  skeletonCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+    elevation: 1,
+  },
+  skeletonImage: {
+    height: 160,
+    backgroundColor: '#E0E0E0',
+  },
+  skeletonContent: {
+    padding: 16,
+  },
+  skeletonTitle: {
+    height: 20,
+    width: '60%',
+    backgroundColor: '#E0E0E0',
+    marginBottom: 10,
+    borderRadius: 4,
+  },
+  skeletonText: {
+    height: 14,
+    width: '90%',
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 100,
+  }
 });
-

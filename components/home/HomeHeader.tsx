@@ -1,68 +1,101 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
-// Quitamos la importación de Icon si no se usa aquí directamente
-import { useUser } from '../../context/UserContext'; // Importamos el hook useUser
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, useTheme, Avatar, Badge } from 'react-native-paper';
+import { useUser } from '../../context/UserContext';
+import { useRouter } from 'expo-router';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export const HomeHeader = () => {
   const theme = useTheme();
-  // Usamos el hook para obtener los datos necesarios del usuario logueado
-  const { username, totalScore, loadingProfile } = useUser(); // Obtenemos username y totalScore
-
-  // Podemos usar loadingProfile para mostrar un placeholder si es necesario
-  // const level = 5; // Mantenemos el nivel como local por ahora
+  const router = useRouter();
+  const { username, totalScore, profileImage } = useUser();
 
   return (
-    <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-      <View style={styles.row}>
+    <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+      {/* Lado Izquierdo: Avatar y Saludo */}
+      <TouchableOpacity onPress={() => router.push('/(tabs)/perfil')} style={styles.profileSection}>
         <View>
-          {/* Muestra el username del contexto */}
-          <Text variant="headlineMedium" style={styles.headerTitle}>Hola, {username}</Text>
-          <Text style={styles.headerSubtitle}>¿Listo para la eco-aventura de hoy?</Text>
+          <Avatar.Image
+            size={44}
+            source={{ uri: profileImage || 'https://avatar.iran.liara.run/public/47' }}
+          />
+          {/* Indicador de nivel o status */}
+          <View style={[styles.badge, { borderColor: theme.colors.surface }]}>
+             <View style={{width: 10, height: 10, borderRadius: 5, backgroundColor: '#4CAF50'}} />
+          </View>
         </View>
-        <View style={styles.pointsContainer}>
-          {/* Muestra el totalScore del contexto. Usamos ?? 0 por si acaso es null/undefined inicialmente */}
-          <Text style={styles.pointsValue}>{loadingProfile ? '...' : (totalScore ?? 0)}</Text>
-          <Text style={styles.pointsLabel}>Puntos Eco</Text>
+        <View style={styles.textContainer}>
+          <Text variant="labelSmall" style={{ color: theme.colors.outline }}>Bienvenido de nuevo</Text>
+          <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+            {username}
+          </Text>
         </View>
+      </TouchableOpacity>
+
+      {/* Lado Derecho: Puntos y Notificaciones (placeholder) */}
+      <View style={styles.actions}>
+        <View style={[styles.pointsPill, { backgroundColor: theme.colors.secondaryContainer }]}>
+          <Icon name="leaf" size={16} color={theme.colors.primary} />
+          <Text style={[styles.pointsText, { color: theme.colors.onSecondaryContainer }]}>
+            {totalScore ?? 0}
+          </Text>
+        </View>
+
+        <TouchableOpacity style={styles.iconButton}>
+           <Icon name="bell-outline" size={24} color={theme.colors.onSurfaceVariant} />
+           <Badge size={8} style={styles.notificationDot} visible={true} />
+        </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-// Los estilos se mantienen igual
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: 60, // Espacio para la barra de estado
-    paddingBottom: 24, // Reducimos el padding inferior
-  },
-  row: {
+  container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  headerTitle: {
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textContainer: {
+    marginLeft: 12,
+  },
+  badge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    borderWidth: 2,
+    borderRadius: 6,
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  pointsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  pointsText: {
     fontWeight: 'bold',
-    color: 'white',
+    fontSize: 14,
   },
-  headerSubtitle: {
-    color: 'white',
-    opacity: 0.9,
-    marginTop: 4,
+  iconButton: {
+    padding: 4,
   },
-  pointsContainer: {
-    alignItems: 'flex-end',
-  },
-  pointsValue: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 24,
-  },
-  pointsLabel: {
-    color: 'white',
-    opacity: 0.9,
-    fontSize: 12,
-  },
+  notificationDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#FF5252'
+  }
 });
-

@@ -1,130 +1,146 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Card, Text, Chip, ActivityIndicator, useTheme } from 'react-native-paper'; // Import ActivityIndicator y useTheme
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import { Text, useTheme, Surface } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useUser, Reto } from '../../context/UserContext'; // Importa useUser y la interfaz Reto
+import { useUser, Reto } from '../../context/UserContext';
+import { useRouter } from 'expo-router';
 
-// Componente para mostrar un item de reto (anteriormente RouteItem)
-// Ahora recibe un objeto 'Reto'
-const ChallengeItem = ({ challenge }: { challenge: Reto }) => {
+const ChallengeItem = ({ challenge, onPress }: { challenge: Reto, onPress: () => void }) => {
   const theme = useTheme();
 
-  // Determinar un icono basado en el título o tipo (ejemplo simple)
-  let iconName = 'walk'; // Icono por defecto
-  if (challenge.titulo.toLowerCase().includes('bici')) iconName = 'bike';
-  if (challenge.titulo.toLowerCase().includes('foto')) iconName = 'camera';
-  if (challenge.titulo.toLowerCase().includes('recicl')) iconName = 'recycle';
+  let iconName = 'walk';
+  let iconColor = theme.colors.primary;
+  let bgIconColor = theme.colors.secondaryContainer;
+
+  if (challenge.titulo.toLowerCase().includes('recicl')) {
+    iconName = 'recycle';
+    iconColor = '#2E7D32'; // Verde oscuro
+    bgIconColor = '#E8F5E9';
+  } else if (challenge.titulo.toLowerCase().includes('foto')) {
+    iconName = 'camera';
+    iconColor = '#1565C0'; // Azul
+    bgIconColor = '#E3F2FD';
+  }
 
   return (
-    <View style={styles.routeItem}>
-        <View style={styles.routeIconContainer}>
-            {/* Usa el icono determinado */}
-            <Icon name={iconName} size={24} color="#333" />
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <Surface style={styles.itemContainer} elevation={1}>
+        <View style={[styles.iconContainer, { backgroundColor: bgIconColor }]}>
+          <Icon name={iconName} size={24} color={iconColor} />
         </View>
-        <View style={styles.routeInfo}>
-            {/* Usa el título del reto */}
-            <Text style={styles.routeName}>{challenge.titulo}</Text>
-            {/* Muestra descripción o dirección si existe */}
-            <Text style={styles.routeDetails} numberOfLines={1} ellipsizeMode="tail">
-                {challenge.descripcion || challenge.direccion || 'Detalles no disponibles'}
-            </Text>
+
+        <View style={styles.infoContainer}>
+          <Text variant="titleSmall" style={styles.itemTitle} numberOfLines={1}>
+            {challenge.titulo}
+          </Text>
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }} numberOfLines={1}>
+            {challenge.descripcion || 'Sin descripción'}
+          </Text>
         </View>
-        {/* Muestra los puntos otorgados */}
-        <Chip style={[styles.pointsChip, { backgroundColor: theme.colors.secondaryContainer }]}>+{challenge.puntos_otorgados} pts</Chip>
-    </View>
+
+        <View style={styles.pointsBadge}>
+          <Text style={[styles.pointsText, { color: theme.colors.primary }]}>
+            +{challenge.puntos_otorgados}
+          </Text>
+        </View>
+      </Surface>
+    </TouchableOpacity>
   );
 };
 
-
 export default function EcologicalRoutes() {
-  const { challenges, loadingChallenges } = useUser(); // Obtiene los retos y el estado de carga
+  const { challenges, loadingChallenges } = useUser();
   const theme = useTheme();
+  const router = useRouter();
+
+  // Mostramos solo los primeros 3 para no saturar el home
+  const displayChallenges = challenges.slice(0, 3);
+
+  if (loadingChallenges) {
+    // Skeleton simple para la lista
+    return (
+      <View style={{ gap: 10 }}>
+        {[1, 2].map((i) => (
+          <View key={i} style={[styles.skeletonItem, { backgroundColor: theme.colors.surfaceVariant }]} />
+        ))}
+      </View>
+    );
+  }
+
+  if (displayChallenges.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Icon name="leaf-off" size={40} color={theme.colors.outline} />
+        <Text style={{ color: theme.colors.outline, marginTop: 8 }}>No hay retos cercanos.</Text>
+      </View>
+    );
+  }
 
   return (
-    <Card style={styles.card}>
-        <Card.Content>
-            <View style={styles.header}>
-                <Icon name="map-marker-path" size={24} color="#333" />
-                {/* Cambiamos el título para reflejar que son retos */}
-                <Text style={styles.title}>Retos Cercanos / Disponibles</Text>
-            </View>
-            <Text style={styles.subtitle}>Descubre y completa retos a tu alrededor</Text>
-
-            {/* Muestra indicador de carga si loadingChallenges es true */}
-            {loadingChallenges ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator animating={true} color={theme.colors.primary} />
-                    <Text style={{ marginTop: 8, color: theme.colors.backdrop }}>Cargando retos...</Text>
-                </View>
-            // Muestra mensaje si no hay retos después de cargar
-            ) : challenges.length === 0 ? (
-                <Text style={{ textAlign: 'center', color: theme.colors.backdrop, marginVertical: 20 }}>
-                    No hay retos activos disponibles por el momento.
-                </Text>
-            // Mapea y muestra los retos si existen
-            ) : (
-                challenges.map(challenge => <ChallengeItem key={challenge.id} challenge={challenge} />)
-            )}
-
-        </Card.Content>
-    </Card>
+    <View style={styles.listContainer}>
+      {displayChallenges.map(challenge => (
+        <ChallengeItem
+          key={challenge.id}
+          challenge={challenge}
+          onPress={() => router.push('/retos')} // Lleva a la pestaña de retos
+        />
+      ))}
+    </View>
   );
 }
 
-// Estilos (se mantienen similares, se añade loadingContainer)
 const styles = StyleSheet.create({
-  card: {
+  listContainer: {
+    gap: 12,
+  },
+  itemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'white',
-    marginBottom: 24,
+    borderRadius: 16,
+    padding: 12,
   },
-  header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 4,
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  title: {
-    fontSize: 20,
+  infoContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  itemTitle: {
     fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  pointsBadge: {
+    backgroundColor: '#F1F8E9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     marginLeft: 8,
   },
-  subtitle: {
-    color: '#666',
-    marginBottom: 16,
+  pointsText: {
+    fontWeight: 'bold',
+    fontSize: 12,
   },
-  routeItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#f9f9f9',
-      borderRadius: 12,
-      padding: 12,
-      marginBottom: 8,
+  skeletonItem: {
+    height: 72,
+    borderRadius: 16,
+    width: '100%',
+    opacity: 0.5,
   },
-  routeIconContainer: {
-      backgroundColor: '#e9e9e9',
-      borderRadius: 20,
-      width: 40,
-      height: 40,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 12,
-  },
-  routeInfo: {
-      flex: 1,
-      marginRight: 8, // Añade margen para que no se pegue al chip
-  },
-  routeName: {
-      fontWeight: 'bold',
-  },
-  routeDetails: {
-      color: '#666',
-      fontSize: 12,
-  },
-  pointsChip: {
-      // backgroundColor: '#D4EDDA', // Color se define inline con theme
-  },
-  loadingContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 20,
+  emptyContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9f9f9',
+    borderRadius: 16,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#ddd'
   }
 });
