@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { Modal, Portal, Text, IconButton, TextInput, Avatar, useTheme, Divider, ActivityIndicator } from 'react-native-paper';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, Image, ScrollView, KeyboardAvoidingView, Platform, Alert, Dimensions, TouchableOpacity } from 'react-native';
+import { Modal, Portal, Text, IconButton, TextInput, Avatar, useTheme, Divider, ActivityIndicator, Surface } from 'react-native-paper';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../context/UserContext';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
+
+const { width, height } = Dimensions.get('window');
 
 interface Comment {
   id: number;
@@ -19,12 +24,15 @@ interface Props {
   onDismiss: () => void;
   photoUrl: string;
   photoId: number;
-  photoOwnerId: number; // ID del dueño de la foto para enviarle la notificación
+  photoOwnerId: number;
+  description?: string;
+  date?: string;
 }
 
-export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId, photoOwnerId }: Props) => {
+export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId, photoOwnerId, description, date }: Props) => {
   const theme = useTheme();
   const { userId } = useUser();
+
   const [likesCount, setLikesCount] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -32,12 +40,32 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId, photoO
   const [loadingComments, setLoadingComments] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
 
+  // Datos del dueño de la foto (para mostrar en el header del post)
+  const [ownerProfile, setOwnerProfile] = useState<{usuario: string, avatar_url: string | null} | null>(null);
+
+  // Referencia para capturar la vista
+  const viewShotRef = useRef<ViewShot>(null);
+
   useEffect(() => {
     if (visible && photoId) {
+      fetchOwnerProfile();
       fetchLikes();
       fetchComments();
     }
   }, [visible, photoId]);
+
+  const fetchOwnerProfile = async () => {
+      try {
+          const { data } = await supabase
+            .from('usuarios')
+            .select('usuario, avatar_url')
+            .eq('id', photoOwnerId)
+            .single();
+          setOwnerProfile(data);
+      } catch (e) {
+          console.error("Error fetching owner:", e);
+      }
+  };
 
   const fetchLikes = async () => {
     try {
@@ -81,7 +109,8 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId, photoO
 
       if (error) throw error;
 
-      const mappedComments = data.map((item: any) => ({
+      // Mapeo seguro
+      const mappedComments = (data || []).map((item: any) => ({
         id: item.id,
         comentario: item.comentario,
         fecha_comentario: item.fecha_comentario,
@@ -96,15 +125,12 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId, photoO
     }
   };
 
-  // Función auxiliar para crear notificaciones
   const createNotification = async (tipo: 'like' | 'comentario', mensaje: string) => {
-    // No enviar notificación si el usuario interactúa con su propia foto
     if (!userId || userId === photoOwnerId) return;
-
     try {
       await supabase.from('notificaciones').insert({
-        usuario_id: photoOwnerId, // El destinatario es el dueño de la foto
-        origen_usuario_id: userId, // El origen soy yo
+        usuario_id: photoOwnerId,
+        origen_usuario_id: userId,
         tipo: tipo,
         mensaje: mensaje,
         referencia_tipo: 'foto',
@@ -118,8 +144,8 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId, photoO
 
   const handleToggleLike = async () => {
     if (!userId) return;
-
     const previousLiked = isLiked;
+    // Optimistic update
     setIsLiked(!isLiked);
     setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
 
@@ -128,13 +154,12 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId, photoO
         await supabase.from('foto_likes').delete().eq('foto_id', photoId).eq('usuario_id', userId);
       } else {
         await supabase.from('foto_likes').insert({ foto_id: photoId, usuario_id: userId });
-        // Trigger de notificación al dar like
         createNotification('like', 'Le gustó tu foto');
       }
     } catch (error) {
+      // Revertir si falla
       setIsLiked(previousLiked);
       setLikesCount(prev => previousLiked ? prev + 1 : prev - 1);
-      console.error("Error toggling like:", error);
     }
   };
 
@@ -152,132 +177,267 @@ export const PhotoDetailModal = ({ visible, onDismiss, photoUrl, photoId, photoO
 
       if (error) throw error;
 
-      // Trigger de notificación al comentar
-      createNotification('comentario', `Comentó: ${newComment.trim().substring(0, 20)}${newComment.length > 20 ? '...' : ''}`);
-
+      createNotification('comentario', `Comentó: ${newComment.trim().substring(0, 20)}...`);
       setNewComment('');
-      fetchComments();
+      fetchComments(); // Refrescar comentarios
     } catch (error) {
-      console.error("Error sending comment:", error);
       Alert.alert("Error", "No se pudo enviar el comentario.");
     } finally {
       setSendingComment(false);
     }
   };
 
+  // Función para compartir imagen
+  const handleShare = async () => {
+    try {
+      // Capturamos solo la imagen o una parte específica si envolvemos más cosas en ViewShot
+      // En este caso, envolvemos la imagen principal para compartirla limpia.
+      const uri = await viewShotRef.current?.capture?.();
+      if (uri) {
+        if (!(await Sharing.isAvailableAsync())) {
+          Alert.alert("Error", "Compartir no está disponible en este dispositivo");
+          return;
+        }
+        await Sharing.shareAsync(uri, {
+            dialogTitle: 'Compartir foto de CaminAR',
+            mimeType: 'image/jpeg',
+            UTI: 'image/jpeg'
+        });
+      }
+    } catch (error) {
+      console.error("Error al compartir:", error);
+      Alert.alert("Error", "No se pudo generar la imagen para compartir.");
+    }
+  };
+
   const renderComment = ({ item }: { item: Comment }) => (
     <View style={styles.commentItem}>
-      <Avatar.Image size={32} source={{ uri: item.usuario.avatar_url || 'https://avatar.iran.liara.run/public' }} />
+      <Avatar.Image size={32} source={{ uri: item.usuario.avatar_url || 'https://avatar.iran.liara.run/public' }} style={{backgroundColor: '#eee'}} />
       <View style={styles.commentContent}>
-        <Text style={styles.commentUser}>{item.usuario.usuario}</Text>
-        <Text style={styles.commentText}>{item.comentario}</Text>
+        <Text variant="bodyMedium">
+            <Text style={{fontWeight: 'bold'}}>{item.usuario.usuario} </Text>
+            {item.comentario}
+        </Text>
       </View>
     </View>
   );
 
   return (
     <Portal>
-      <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modalContainer}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <Modal
+        visible={visible}
+        onDismiss={onDismiss}
+        contentContainerStyle={styles.fullScreenContainer}
+        style={{ margin: 0 }} // Quitar márgenes del Modal nativo de paper
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            >
 
-          <View style={styles.header}>
-            <IconButton icon="close" onPress={onDismiss} />
-            <Text variant="titleMedium" style={{fontWeight: 'bold'}}>Publicación</Text>
-            <View style={{width: 40}} />
-          </View>
+                {/* --- HEADER: Usuario y Cerrar --- */}
+                <View style={styles.header}>
+                    <View style={styles.headerUser}>
+                        <Avatar.Image
+                            size={36}
+                            source={{ uri: ownerProfile?.avatar_url || 'https://avatar.iran.liara.run/public' }}
+                        />
+                        <Text variant="titleMedium" style={styles.headerUsername}>{ownerProfile?.usuario || 'Usuario'}</Text>
+                    </View>
+                    <IconButton icon="close" onPress={onDismiss} size={26} />
+                </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            <Image source={{ uri: photoUrl }} style={styles.mainImage} resizeMode="cover" />
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* --- IMAGEN PRINCIPAL --- */}
+                    {/* Envolvemos la imagen en ViewShot para capturarla */}
+                    <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
+                        <View style={styles.imageWrapper}>
+                            <Image
+                                source={{ uri: photoUrl }}
+                                style={styles.mainImage}
+                                resizeMode="cover"
+                            />
+                            {/* Marca de agua opcional si se desea */}
+                            {/* <View style={styles.watermark}><Text style={{color:'white', fontSize: 10}}>CaminAR</Text></View> */}
+                        </View>
+                    </ViewShot>
 
-            <View style={styles.actionsBar}>
-              <View style={styles.likeContainer}>
-                <IconButton
-                    icon={isLiked ? "heart" : "heart-outline"}
-                    iconColor={isLiked ? "#ED4956" : theme.colors.onSurface}
-                    size={26}
-                    onPress={handleToggleLike}
-                    style={{margin: 0}}
-                />
-                <Text style={{fontWeight: '600', marginLeft: 4}}>{likesCount} Me gusta</Text>
-              </View>
-            </View>
+                    {/* --- ACCIONES (Like y Compartir) --- */}
+                    <View style={styles.actionsBar}>
+                        <View style={styles.leftActions}>
+                            <TouchableOpacity onPress={handleToggleLike} style={styles.actionButton}>
+                                <Icon
+                                    name={isLiked ? "heart" : "heart-outline"}
+                                    size={28}
+                                    color={isLiked ? "#ED4956" : theme.colors.onSurface}
+                                />
+                            </TouchableOpacity>
+                            {/* Botón de Compartir */}
+                            <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
+                                <Icon
+                                    name="share-variant-outline"
+                                    size={26}
+                                    color={theme.colors.onSurface}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
 
-            <Divider style={{marginVertical: 8}} />
+                    {/* --- LIKES Y CAPTION --- */}
+                    <View style={styles.infoSection}>
+                        <Text variant="bodyMedium" style={{ fontWeight: 'bold', marginBottom: 6 }}>
+                            {likesCount} Me gusta
+                        </Text>
 
-            <View style={styles.commentsSection}>
-              {loadingComments ? (
-                <ActivityIndicator size="small" style={{marginTop: 20}} />
-              ) : comments.length === 0 ? (
-                <Text style={styles.emptyComments}>Aún no hay comentarios.</Text>
-              ) : (
-                  comments.map(comment => (
-                      <View key={comment.id} style={styles.commentItemWrapper}>
-                          {renderComment({ item: comment })}
-                      </View>
-                  ))
-              )}
-            </View>
-          </ScrollView>
+                        {/* Caption del dueño */}
+                        {description ? (
+                            <View style={styles.captionContainer}>
+                                <Text variant="bodyMedium">
+                                    <Text style={{ fontWeight: 'bold' }}>{ownerProfile?.usuario} </Text>
+                                    {description}
+                                </Text>
+                            </View>
+                        ) : null}
 
-          <View style={styles.inputContainer}>
-            <TextInput
-              placeholder="Añade un comentario..."
-              value={newComment}
-              onChangeText={setNewComment}
-              mode="flat"
-              underlineColor="transparent"
-              activeUnderlineColor="transparent"
-              style={styles.input}
-              right={
-                  <TextInput.Icon
-                    icon={sendingComment ? "loading" : "send"}
-                    onPress={handleSendComment}
-                    disabled={sendingComment || !newComment.trim()}
-                    color={theme.colors.primary}
-                  />
-              }
-            />
-          </View>
+                        {/* Fecha */}
+                        <Text variant="labelSmall" style={{ color: '#8e8e8e', marginTop: 4, marginBottom: 12 }}>
+                            {date ? new Date(date).toLocaleDateString() : 'Reciente'}
+                        </Text>
+                    </View>
 
-        </KeyboardAvoidingView>
+                    <Divider style={{ height: 1, opacity: 0.5 }} />
+
+                    {/* --- COMENTARIOS --- */}
+                    <View style={styles.commentsSection}>
+                        {loadingComments ? (
+                            <ActivityIndicator size="small" style={{ marginTop: 20 }} />
+                        ) : comments.length === 0 ? (
+                            <View style={styles.noComments}>
+                                <Text style={{ color: '#8e8e8e' }}>Sé el primero en comentar.</Text>
+                            </View>
+                        ) : (
+                            comments.map((comment) => (
+                                <View key={comment.id} style={styles.commentItemWrapper}>
+                                    {renderComment({ item: comment })}
+                                </View>
+                            ))
+                        )}
+                    </View>
+                </ScrollView>
+
+                {/* --- INPUT DE COMENTARIO (Fixed Bottom) --- */}
+                <View style={styles.inputWrapper}>
+                    {/* Se eliminó el Avatar 404 */}
+                    <TextInput
+                        placeholder={`Añade un comentario como...`}
+                        value={newComment}
+                        onChangeText={setNewComment}
+                        mode="flat"
+                        underlineColor="transparent"
+                        activeUnderlineColor="transparent"
+                        style={styles.input}
+                        contentStyle={{ paddingVertical: 0 }} // Centra texto en iOS
+                        dense
+                    />
+                    {newComment.trim().length > 0 && (
+                        <TouchableOpacity onPress={handleSendComment} disabled={sendingComment}>
+                            {sendingComment ? (
+                                <ActivityIndicator size={16} color={theme.colors.primary} />
+                            ) : (
+                                <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>Publicar</Text>
+                            )}
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+            </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
     </Portal>
   );
 };
 
+// Necesitamos SafeAreaView nativo dentro del modal
+const SafeAreaView = ({ children, style }: {children: React.ReactNode, style?: any}) => (
+    <View style={style}>{children}</View>
+);
+
 const styles = StyleSheet.create({
-  modalContainer: {
+  fullScreenContainer: {
     backgroundColor: 'white',
     flex: 1,
     margin: 0,
+    paddingTop: Platform.OS === 'ios' ? 40 : 0, // Ajuste para status bar
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 44 : 0,
-    height: Platform.OS === 'ios' ? 88 : 56,
+    paddingHorizontal: 16,
+    height: 56,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#ddd',
+    borderBottomColor: '#dbdbdb',
   },
-  scrollContent: {
-    paddingBottom: 80,
-  },
-  mainImage: {
-    width: '100%',
-    height: 400,
-    backgroundColor: '#f0f0f0',
-  },
-  actionsBar: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  likeContainer: {
+  headerUser: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  headerUsername: {
+    fontWeight: 'bold',
+    marginLeft: 10,
+  },
+  scrollContent: {
+    paddingBottom: 80, // Espacio para el input
+  },
+  imageWrapper: {
+    width: width,
+    height: width, // Cuadrado perfecto tipo Instagram (o 4:5 si se desea vertical)
+    backgroundColor: '#f0f0f0',
+    position: 'relative',
+  },
+  mainImage: {
+    width: '100%',
+    height: '100%',
+  },
+  watermark: {
+      position: 'absolute',
+      bottom: 10,
+      right: 10,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      padding: 4,
+      borderRadius: 4
+  },
+  actionsBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  leftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButton: {
+    marginRight: 16,
+  },
+  infoSection: {
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  captionContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
   commentsSection: {
     paddingHorizontal: 16,
+    paddingTop: 16,
   },
   commentItemWrapper: {
     marginBottom: 16,
@@ -289,34 +449,31 @@ const styles = StyleSheet.create({
   commentContent: {
     marginLeft: 12,
     flex: 1,
+    justifyContent: 'center',
   },
-  commentUser: {
-    fontWeight: '700',
-    fontSize: 13,
-    marginBottom: 2,
+  noComments: {
+    padding: 20,
+    alignItems: 'center',
   },
-  commentText: {
-    fontSize: 14,
-    lineHeight: 18,
-    color: '#333',
-  },
-  emptyComments: {
-    textAlign: 'center',
-    color: '#999',
-    marginTop: 20,
-    fontStyle: 'italic',
-  },
-  inputContainer: {
+  // Input Bar
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 0.5,
-    borderTopColor: '#ddd',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    borderTopColor: '#dbdbdb',
     backgroundColor: 'white',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   input: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 20,
-    height: 45,
+    flex: 1,
+    backgroundColor: 'transparent',
+    height: 40,
     fontSize: 14,
+    paddingHorizontal: 0,
   }
 });
